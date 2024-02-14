@@ -1,0 +1,44 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }} {{current_path}}{% endblock %}
+
+{% block content %}
+  <div>
+    <div class="form_div">
+      <p class="breadcrumbs">{{ breadcrumbs|safe }}</p>
+
+      {% if message %}
+        <ul>
+          <li class="success">
+              {{ message }}
+          </li>
+      {% elif error_message %}
+          <li class="error">
+              {{ error_message }}
+          </li>
+        </ul>
+      {% endif %}
+
+      <!-- Loading -->
+      <p id="fibas-loading-spinner" style="display: none;">Loading...</p>
+
+      <ul>
+        {% for file in files %}
+          <li>
+            {% if file.is_directory %}
+              <a href="{% url 'fibas_sftp_file_manager' path=file.file_path %}">{{ file.name }}/</a>
+            {% else %}
+              <form method="post" action="{% url 'fibas_sftp_file_manager' path=current_path %}">
+                {% csrf_token %}
+                <input type="hidden" name="current_path" value="{{ current_path }}">
+                <input type="hidden" name="file_name" value="{{ file.name }}">
+                <button class="fibas-download" type="submit">Download {{ file.name }}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+  </div>
+{% endblock %}

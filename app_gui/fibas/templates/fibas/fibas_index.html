@@ -1,0 +1,25 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div>
+            <ul>
+                <li><a href="{% url 'fibas_sftp_file_manager' %}">Download from SFTP-server</a></li>
+                <li><a href="{% url 'fibas_add_files' %}">Create new conversion</a></li>
+                <li><a href="{% url 'fibas_custom_macros' %}">Custom macros</a></li>
+            </ul>
+        </div>
+        <div>
+            {% if fibases %}
+                <ul>
+                {% for fibas in fibases %}
+                    <li><a href="{% url 'fibas_database' fibas.pk %}">{{ fibas }}</a></li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}

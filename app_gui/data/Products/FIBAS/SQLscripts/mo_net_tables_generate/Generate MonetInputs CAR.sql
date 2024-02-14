@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS `MonetInputsCAR`;
+CREATE TABLE IF NOT EXISTS `MonetInputsCAR` AS
+SELECT `MonetInputsUpdated`.`PolNo`, `MonetInputsUpdated`.`FibStat`, `MonetInputsUpdated`.`PeriodIF`, `MonetInputsUpdated`.`Count`, `MonetInputsUpdated`.`commencement date`, "disable" AS `Status`,
+    `MonetInputsUpdated`.`product`, `MonetInputsUpdated`.`book`, `MonetInputsUpdated`.`Country`, `MonetInputsUpdated`.`AgeEnt1`, `MonetInputsUpdated`.`AgeEnt2`, `MonetInputsUpdated`.`Sex1`, `MonetInputsUpdated`.`Sex2`, `MonetInputsUpdated`.`Smoker1`, `MonetInputsUpdated`.`Smoker2`, `MonetInputsUpdated`.`WorkSituation`, `MonetInputsUpdated`.`ProperHouse`, `MonetInputsUpdated`.`ProfessionalClass`, `MonetInputsUpdated`.`Term`, `MonetInputsUpdated`.`StartMthMP`, `MonetInputsUpdated`.`BenefitType`, `MonetInputsUpdated`.`WaitingTime`, `MonetInputsUpdated`.`BeneDuration`, `MonetInputsUpdated`.`BeneDurMth`, `MonetInputsUpdated`.`SumAssuredEnt`, `MonetInputsUpdated`.`SPadd`, `MonetInputsUpdated`.`MonthlyPremium`, `MonetInputsUpdated`.`PremFreq`, `MonetInputsUpdated`.`DisableDef`, `MonetInputsUpdated`.`BenefitDef`, `MonetInputsUpdated`.`MthOwnOccupation`, `MonetInputsUpdated`.`MethPartial`, `MonetInputsUpdated`.`mental diseases`, `MonetInputsUpdated`.`Mental`, `MonetInputsUpdated`.`WoP`, `MonetInputsUpdated`.`cover code`, `MonetInputsUpdated`.`MortgageRate`, `MonetInputsUpdated`.`producttype`, `MonetInputsUpdated`.`Index`, `MonetInputsUpdated`.`CalcPremium`, `MonetInputsUpdated`.`Discount`, 0 AS `PeriodDisable`,
+100 AS `PercentageDisable`,
+`MonetInputsUpdated`.`SumAssuredEnt` AS `MonthlyBenefit`, `MonetInputsUpdated`.`ClaimReserveValDate`,
+2021 AS `OccurrenceYear`, `MonetInputsUpdated`.`RIModel`, `MonetInputsUpdated`.`CombiRate`
+FROM MonetInputsUpdated;
