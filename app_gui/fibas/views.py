@@ -392,6 +392,7 @@ def data_conversion(request, pk):
 
             try:
                 Conversion().run(db_name)
+                print(db_name, 'DB_NAME' )
             except Exception as e:
                 response = str(e)
                 logger.error(response)

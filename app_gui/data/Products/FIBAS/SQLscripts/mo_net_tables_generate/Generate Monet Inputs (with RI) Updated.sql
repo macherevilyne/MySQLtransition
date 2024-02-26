@@ -50,7 +50,7 @@ SELECT `Policies`.`policy number` AS `PolNo`,
     CASE
         WHEN Policies.`benefit_duration` = 'Extended' OR Policies.`benefit_duration` = 'Enddate'
             THEN (CASE
-                        WHEN Policies.status = 'disable' THEN MonetInputsClaimsUpdated.Term
+                        When IF(ISNULL(`MonetInputsClaimsUpdated`.`PolNo`),"active","disable") = 'disable' THEN MonetInputsClaimsUpdated.Term
                         WHEN IFNULL(Policies.`total_term`, 0) = 0 THEN 12 * 65 - TIMESTAMPDIFF(MONTH,STR_TO_DATE(`Date of birth`, '%d-%m-%Y'),STR_TO_DATE(`Policies`.`commencement date`, '%d-%m-%Y'))
                         ELSE Policies.`total_term`
                     END)
