@@ -2,6 +2,8 @@ import re
 import os
 import io
 import logging
+
+import sqlparse
 import sqlvalidator
 import paramiko
 
@@ -10,6 +12,8 @@ from os.path import isfile, join
 from datetime import datetime
 from stat import S_ISDIR
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.http import HttpResponseRedirect
 from django.views import View
 from django.http import Http404, HttpResponse, JsonResponse
@@ -20,14 +24,15 @@ from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.files.uploadedfile import SimpleUploadedFile
-
+from django.contrib import messages
 from main.utils import DataMixin, ConnectConfig, check_files_name, \
     create_name_database_with_date, check_files_name_update, get_path_name_input
 from main.helpers.sql_connection.sql_connection import Connector
 
-from .models import Fibas, Parameters, ExcelFile, UserSql, UserMacros, UserMacrosSql
+from .models import Fibas, Parameters, ExcelFile, UserSql, UserMacros, UserMacrosSql, \
+    UserQuery, ExecuteQuery
 from .forms import AddFilesConversionForm, ParametersForm, ExcelFileForm, UserSqlForm, \
-    ExecuteSqlForm, UserMacrosForm, ExecuteMacrosForm
+    ExecuteSqlForm, UserMacrosForm, ExecuteMacrosForm, ExecuteQueryForm, UserQueryForm
 from .helpers.conversion.conversion import Conversion
 from .helpers.conversion.conversion_excel import ConversionExcel
 from .helpers.macros.Run_DB_checks import DBchecks
@@ -37,6 +42,10 @@ from .helpers.views_query.run_views_files import run_view_file
 from .utils import validate_filename_claims_sftp, validate_filename_claims_basic_sftp, \
     validate_filename_claims_policy_sftp, validate_filename_policies_sftp
 from app_gui.settings import MEDIA_ROOT
+
+
+# from main.utils import get_path_name_input_queries
+from main.utils import move_query_file
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +129,8 @@ class DatabasePageView(ListView, DataMixin):
             title = fibas.title
             # check db fibas in MySQL
             check_db_fibas = sql.check_database(title)
+
+
             if check_db_fibas:
                 claims = sql.check_table(db_name=title, table_name='Claims')
                 claims_basic = sql.check_table(db_name=title, table_name='ClaimsBasic')
@@ -570,6 +581,7 @@ class EditSqlView(UpdateView, DataMixin):
         if form.is_valid():
             query = form.cleaned_data['query']
             sql_query = sqlvalidator.parse(query)
+            print(sql_query,  'sql_query')
             if not sql_query.is_valid():
                 form.add_error('query', 'Invalid SQL query')
                 return self.form_invalid(form)
@@ -656,6 +668,174 @@ class ExecuteSqlView(View, DataMixin):
         return result
 
 
+
+#вьюха отвечает за загрузку файлов запросов
+class Fibas_upload_query(CreateView, DataMixin):
+    model = UserQuery
+    form_class = UserQueryForm
+    template_name = 'fibas/fibas_upload_query.html'  # Замените на свой шаблон
+    success_url = reverse_lazy('fibas_execute_query')
+
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_success_url(self):
+        db_name = self.request.GET.get('db_name')
+        return reverse('fibas_execute_query', kwargs={'db_name': db_name, 'query_id': self.object.pk})
+
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form()
+
+        if form.is_valid():
+            self.object = form.save(commit=False)
+
+            query_file = form.cleaned_data['query_file']
+            print(query_file, 'query file')
+
+            if query_file:
+                _, file_extension = os.path.splitext(query_file.name)
+                if file_extension.lower() != '.sql':
+                    form.add_error('query_file', f'Invalid file "{query_file.name}"  format. Please upload a SQL file')
+                    return self.form_invalid(form)
+            else:
+                form.add_error('query_file', 'Please choose a file')
+                return self.form_invalid(form)
+
+            # file_content = query_file.read().decode('utf-8').strip()
+            # print(file_content, 'File content')
+
+
+            try:
+
+                query_file = form.cleaned_data['query_file']
+                print(query_file, 'query_file')
+                file_content = query_file.read().decode('utf-8').strip()
+                print(file_content, 'File content')
+                parsed_query = sqlvalidator.parse(file_content)
+                is_valid = parsed_query.is_valid()
+                print(is_valid, 'IS_VALID')
+
+                if not is_valid:
+                    form.add_error('query_file', f'Invalid SQL query in "{query_file.name}"')
+                    return self.form_invalid(form)
+
+                file_name = query_file.name
+                self.object.file_name = file_name
+                return self.form_valid(form)
+            except Exception as e:
+                print('Exception:', e)
+                # Обработка исключения, если парсинг запроса не удался
+                form.add_error('query_file', f'Error parsing SQL queries in "{query_file.name}": {e}')
+                return self.form_invalid(form)
+
+
+
+        else:
+            return render(request, self.template_name, {'form': form, 'errors': form.errors})
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title=f'Upload new query')
+        return dict(list(context.items()) + list(c_def.items()))
+
+
+#вьюха отвечает за список загруженных запросов
+class FibasUserHistoryQueryListView(ListView, DataMixin):
+    model = UserQuery
+    template_name = 'fibas/fibas_user_query_list.html'
+    context_object_name = 'user_query_list'
+    ordering = ['-id']
+    paginate_by = 15
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        db_name = self.kwargs.get('db_name')
+        context['db_name'] = db_name
+        c_def = self.get_user_context(title=f'List history users query')
+        context.update(c_def)
+        # Добавляем информацию о пагинации в контекст
+        paginator = context['paginator']
+        page = context['page_obj']
+        context['is_paginated'] = page.has_other_pages()
+        context['prev_url'] = f'?page={page.previous_page_number()}' if page.has_previous() else ''
+        context['next_url'] = f'?page={page.next_page_number()}' if page.has_next() else ''
+        return dict(list(context.items()) + list(c_def.items()))
+
+
+#Вьюха отвечает за вставку запросов
+class ExecuteQueryView(View, DataMixin):
+    template_name = 'fibas/fibas_execute_query.html'
+
+    def get(self, request, query_id, *args, **kwargs):
+        query = UserQuery.objects.get(pk=query_id)
+        form = ExecuteQueryForm()
+        context = {'query': query,'form': form}
+        context.update(self.get_user_context(title=f'Executing query'))
+        return render(request, self.template_name, context)
+
+    def post(self, request, query_id, *args, **kwargs):
+        query = UserQuery.objects.get(pk=query_id)
+
+        print(query, 'QUERY2')
+        form = ExecuteQueryForm(request.POST, request.FILES)
+        results = None
+        if form.is_valid():
+            db_name = form.cleaned_data['db_name']
+            fibas_object = Fibas.objects.get(title=db_name.title)  # Получить объект Fibas по slug
+
+
+            # Теперь, когда у вас есть объект Fibas, свяжите его с запросом
+            query.fibas = fibas_object
+            query.save()
+            move_query_file(query)
+            results = self.execute_query(query=query, db_name=db_name)
+            print(results, 'RESULT')
+
+
+        context = {'query': query, 'results': results,  'form': form}
+        context.update(self.get_user_context(title=f'Executing query'))
+        return render(request, self.template_name, context)
+
+    def execute_query(self, query, db_name):
+        connector  = Connector()
+        connection = connector .connection(db_name=db_name)
+
+
+        try:
+            result = {
+                'result': 'Query failed'
+            }
+            results_connection = []
+            query_content = query.query_file.read().decode()
+
+            query_requests = query_content.split(';')
+            print(query_requests, 'QUERY REQUEST')
+
+            for query_requests in query_requests:
+                result_connection = connection.execute(query_requests)
+                results_connection.append(result_connection)
+            if results_connection:
+                result = {
+                    'result': 'Query completed'
+                }
+        except Exception as e:
+            logger.error(str(e))
+
+            try:
+                error_text = str(e.orig)
+            except:
+                error_text = str(e)
+
+            result = {
+                'error': error_text
+            }
+        finally:
+            connection.close()
+        return result
+
+
+
 class CustomMacrosView(ListView, DataMixin):
     model = UserSql
     template_name = 'fibas/fibas_custom_macros.html'
@@ -664,6 +844,8 @@ class CustomMacrosView(ListView, DataMixin):
         context = super().get_context_data(**kwargs)
         c_def = self.get_user_context(title=f'Custom macros')
         return dict(list(context.items()) + list(c_def.items()))
+
+
 
 
 class UserCreateMacrosView(CreateView, DataMixin):
@@ -703,6 +885,42 @@ class UserCreateMacrosView(CreateView, DataMixin):
         context.update(c_def)
         return context
 
+class UserCreateCustomMacrosView(CreateView, DataMixin):
+    model = UserMacros
+    form_class = UserMacrosForm
+    template_name = 'fibas/fibas_user_create_custom_macros.html'
+    success_url = reverse_lazy('fibas_user_macros_list')
+
+    # def get(self, request, *args, **kwargs):
+    #     form = UserMacrosForm()
+    #     user_sql_objects = UserSql.objects.all()
+    #     context = {'form': form, 'user_sql_objects': user_sql_objects}
+    #     context.update(self.get_user_context(title=f'Create macros'))
+    #     return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        form = UserMacrosForm(request.POST)
+        if form.is_valid():
+            user_macros = form.save(commit=False)
+            user_macros.save()
+
+            sql_queries = request.POST.getlist('user_sql')
+            for order, sql_id in enumerate(sql_queries, start=1):
+                user_sql = UserSql.objects.get(pk=sql_id)
+                UserMacrosSql.objects.create(user_macros=user_macros, user_sql=user_sql, order=order)
+
+            return redirect('fibas_execute_macros', macros_id=user_macros.pk)
+        else:
+            error_message = 'One field is required.'
+            context = {'form': form, 'user_sql_objects': UserSql.objects.all(), 'error_message': error_message}
+            context.update(self.get_user_context(title=f'Create custom macros'))
+            return render(request, self.template_name, context)
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title=f'Create custom macros')
+        context.update(c_def)
+        return context
 
 class UserMacrosListView(ListView, DataMixin):
     model = UserMacros

@@ -44,7 +44,7 @@ IF(ISNULL(`Policies`.`RP net premium`),0,IF(`policies`.`premium payment`="Yearly
 IF(`Premium payment`="Single premium",99,12) AS `PremFreq`,
 IF(LOCATE(`Policies`.`Cover code`,"Passend") Or '{producttype}'="old","Suitable",
     IF(LOCATE(`Policies`.`Cover code`,"Eigen")>0,"Own","Any")) AS `DisableDef`,
-IF(`SpecialPartialTable`.`eerste_polis_nummer`=`Policy number`,"P25",
+IF(8087463=`Policy number`,"P25",
     IF('{producttype}'="old",Right(`Policies`.`Cover code`,3),
         IF(LOCATE(`Policies`.`Cover code`,"80%")>0,"P80",
             IF(LOCATE(`policies`.`Cover code`,"65%")>0,"P65",
@@ -80,9 +80,7 @@ IF(`OccurrenceYear`>2015 Or `OccurrenceYear`=0,
     IF((SELECT `book`)=2019 Or (SELECT `book`)=2020,"FIBAS18_q85","FIBAS14_q85"),"NotReinsured") AS `RIModel`,
 IF(`rate_type`="Combi","Yes","No") AS `CombiRate`
 
-FROM (
-    `Policies` LEFT JOIN `MonetInputsClaimsUpdated` ON `Policies`.`policy number` = `MonetInputsClaimsUpdated`.`PolNo`
-        ) LEFT JOIN `SpecialPartialTable` ON `Policies`.`policy number` = `SpecialPartialTable`.`eerste_polis_nummer`
+FROM (`Policies` LEFT JOIN `MonetInputsClaimsUpdated` ON `Policies`.`policy number` = `MonetInputsClaimsUpdated`.`PolNo`)
 WHERE (((`Policies`.`Quantum status`)="Active")
            And ((STR_TO_DATE(`Policies`.`commencement date`, '%d-%m-%Y'))<STR_TO_DATE('{ValDat}', '%d-%m-%Y'))
            And ((IF(`policies`.`product`="TAF Maandlastbeschermer Zelfstandige","ZSP",`policies`.`product group`))<>"WW"))

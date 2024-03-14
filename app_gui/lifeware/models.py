@@ -46,18 +46,18 @@ class LifeWare(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            fibas_object = LifeWare.objects.get(pk=self.pk)
-            if fibas_object.bestandsreport != self.bestandsreport:
-                fibas_object.bestandsreport.delete(save=False)
+            lifeware_object = LifeWare.objects.get(pk=self.pk)
+            if lifeware_object.bestandsreport != self.bestandsreport:
+                lifeware_object.bestandsreport.delete(save=False)
 
-            if fibas_object.bewegungs_report != self.bewegungs_report:
-                fibas_object.bewegungs_report.delete(save=False)
+            if lifeware_object.bewegungs_report != self.bewegungs_report:
+                lifeware_object.bewegungs_report.delete(save=False)
 
-            if fibas_object.lapses_since_inception != self.lapses_since_inception:
-                fibas_object.lapses_since_inception.delete(save=False)
+            if lifeware_object.lapses_since_inception != self.lapses_since_inception:
+                lifeware_object.lapses_since_inception.delete(save=False)
 
-            if fibas_object.termsheet_report != self.termsheet_report:
-                fibas_object.termsheet_report.delete(save=False)
+            if lifeware_object.termsheet_report != self.termsheet_report:
+                lifeware_object.termsheet_report.delete(save=False)
         else:
             database_name = 'LIFEWARE'
             if self.bestandsreport.name:

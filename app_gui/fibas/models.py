@@ -19,7 +19,8 @@ from .utils import validate_filename_claims, \
     claims_basic_path_name, \
     claims_policy_path_name, \
     policies_path_name, \
-    monet_result_all_path_name
+    monet_result_all_path_name, \
+    upload_queries_temp
 
 
 class Fibas(models.Model):
@@ -160,8 +161,7 @@ class UserSql(models.Model):
     query = models.TextField()
 
     def __str__(self):
-        return self.name
-
+        return self.query
 
 class ExecuteSql(models.Model):
     db_name = models.CharField(max_length=100)
@@ -169,6 +169,24 @@ class ExecuteSql(models.Model):
     def __str__(self):
         return self.db_name
 
+#модель запросов
+
+
+class ExecuteQuery(models.Model):
+
+    db_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.db_name
+
+class UserQuery(models.Model):
+    file_name = models.CharField(max_length=255, blank=True, null=True)
+    query_file = models.FileField(upload_to=upload_queries_temp, null=True, blank=True,  storage=OverwriteStorage())
+    fibas = models.ForeignKey(Fibas, on_delete=models.CASCADE, null=True, related_name='user_queries')
+
+
+    def __str__(self):
+        return str(self.file_name)
 
 class UserMacros(models.Model):
     name_macros = models.CharField(max_length=200)

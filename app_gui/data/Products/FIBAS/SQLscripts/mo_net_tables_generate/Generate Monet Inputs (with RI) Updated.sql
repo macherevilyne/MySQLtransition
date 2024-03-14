@@ -50,7 +50,7 @@ SELECT `Policies`.`policy number` AS `PolNo`,
     CASE
         WHEN Policies.`benefit_duration` = 'Extended' OR Policies.`benefit_duration` = 'Enddate'
             THEN (CASE
-                        When IF(ISNULL(`MonetInputsClaimsUpdated`.`PolNo`),"active","disable") = 'disable' THEN MonetInputsClaimsUpdated.Term
+                        WHEN Policies.status = 'disable' THEN MonetInputsClaimsUpdated.Term
                         WHEN IFNULL(Policies.`total_term`, 0) = 0 THEN 12 * 65 - TIMESTAMPDIFF(MONTH,STR_TO_DATE(`Date of birth`, '%d-%m-%Y'),STR_TO_DATE(`Policies`.`commencement date`, '%d-%m-%Y'))
                         ELSE Policies.`total_term`
                     END)
@@ -68,7 +68,7 @@ SELECT `Policies`.`policy number` AS `PolNo`,
     END AS `PremFreq`,
     IF(InStr(`Policies`.`Cover code`,"Passend") Or '{producttype}'="old","Suitable",
         IF(InStr(`Policies`.`Cover code`,"Eigen")>0,"Own","Any")) AS `DisableDef`,
-    IF(`SpecialPartialTable`.`eerste_polis_nummer`=`Policy number`,"P25",
+    IF(8087463=`Policy number`,"P25",
         IF('{producttype}'="old",RIGHT(`Policies`.`Cover code`,3),
             IF(InStr(`Policies`.`Cover code`,"80%")>0,"P80",
                 IF(InStr(`Policies`.`Cover code`,"65%")>0,"P65",
@@ -104,8 +104,7 @@ SELECT `Policies`.`policy number` AS `PolNo`,
     IF((SELECT `OccurrenceYear`)>2015 Or (SELECT `OccurrenceYear`)=0,
         IF((SELECT `book`)=2019 Or (SELECT `book`)=2020,"FIBAS18_q85","FIBAS14_q85"),"NotReinsured") AS `RIModel`,
     IF(`rate_type`="Combi","Yes","No") AS `CombiRate`
-FROM (`Policies` LEFT JOIN `MonetInputsClaimsUpdated` ON `Policies`.`policy number` = `MonetInputsClaimsUpdated`.`PolNo`)
-    LEFT JOIN `SpecialPartialTable` ON `Policies`.`policy number` = `SpecialPartialTable`.`eerste_polis_nummer`
+FROM `Policies` LEFT JOIN `MonetInputsClaimsUpdated` ON `Policies`.`policy number` = `MonetInputsClaimsUpdated`.`PolNo`
 WHERE (((`Policies`.`Quantum status`)="Active")
         And ((STR_TO_DATE(`Policies`.`commencement date`, '%d-%m-%Y'))<STR_TO_DATE('{ValDat}', '%d-%m-%Y'))
         And ((`Policies`.`product group`)<>"WW"))

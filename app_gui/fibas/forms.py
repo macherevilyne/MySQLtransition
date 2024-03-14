@@ -1,7 +1,8 @@
 from os import path
 from django import forms
 
-from .models import Fibas, Parameters, ExcelFile, UserSql, ExecuteSql, UserMacros, ExecuteMacros
+from .models import Fibas, Parameters, ExcelFile, UserSql, ExecuteSql, UserMacros, ExecuteMacros, UserQuery, \
+    ExecuteQuery
 
 
 class ClearableFileInput(forms.ClearableFileInput):
@@ -53,6 +54,20 @@ class UserSqlForm(forms.ModelForm):
     class Meta:
         model = UserSql
         fields = ['name', 'query']
+
+
+class UserQueryForm(forms.ModelForm):
+
+    class Meta:
+        model = UserQuery
+        fields = [ 'query_file']
+
+class ExecuteQueryForm(forms.ModelForm):
+    db_name = forms.ModelChoiceField(queryset=Fibas.objects.all())
+
+    class Meta:
+        model = ExecuteQuery
+        fields = ['db_name']
 
 
 class ExecuteSqlForm(forms.ModelForm):

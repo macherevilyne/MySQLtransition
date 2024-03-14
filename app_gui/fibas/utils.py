@@ -1,4 +1,8 @@
+import os
+
 from main.utils import validate_filename, create_name_database_with_date, get_path_name_input, validate_filename_sftp
+from main.helpers.sql_connection.sql_connection import Connector
+
 
 
 def validate_filename_claims(value):
@@ -80,3 +84,7 @@ def monet_result_all_path_name(instance, filename):
     path = _get_path_name(filename=filename, file_folder_name=file_folder_name)
     return path
 
+#Загрузка во временную папку
+def upload_queries_temp(instance, filename):
+    temp_folder = 'temp_uploads'
+    return os.path.join(temp_folder, filename)

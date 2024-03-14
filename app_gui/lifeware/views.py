@@ -15,9 +15,8 @@ from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
-from main.utils import DataMixin, check_files_name, create_name_database_with_date, check_files_name_update
+from main.utils import DataMixin, ConnectConfig, check_files_name, create_name_database_with_date, check_files_name_update, get_path_name_input
 from main.helpers.sql_connection.sql_connection import Connector
-
 from .models import LifeWare, Parameters, UserSql, UserMacros, UserMacrosSql
 from .forms import AddFilesConversionForm, ParametersForm, UserSqlForm, ExecuteSqlForm, \
     UserMacrosForm, ExecuteMacrosForm

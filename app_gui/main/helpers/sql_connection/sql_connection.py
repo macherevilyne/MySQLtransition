@@ -14,6 +14,7 @@ class Connector:
         config = configparser.ConfigParser()
         file_config = os.path.join(os.getcwd(), 'config.ini')
         config.read(file_config)
+        self.created_database_name = None
         self.username = config["client"]["user"]
         self.password = config["client"]["password"]
         self.host = config["client"]["host"]
@@ -34,10 +35,12 @@ class Connector:
     def create_database(self, db_name: str):
         connection = self.connection()
         sql = f'CREATE DATABASE IF NOT EXISTS {db_name}'
-        print(sql)
         print(f"Executing SQL query: {sql}")
         connection.execute(sql)
         print(f"Database '{db_name}' created successfully.")
+
+
+
 
     def check_database(self, db_name: str):
         connection = self.connection()
