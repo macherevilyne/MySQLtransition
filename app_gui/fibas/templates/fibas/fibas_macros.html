@@ -12,6 +12,9 @@
                     <li><button onclick="fibasRunCheck();">Run Check</button></li>
                 {% endif %}
                 <li><button onclick="fibasRunAllMacros();">Run all macros</button></li>
+
+                <li><a href="{% url 'fibas_create_custom_macros' db_name=db_name %}"> <button>Create custom macros</button></a></li>
+                <li><a href="{% url 'fibas_custom_macros_list' db_name=db_name %}"> <button>Run custom macros</button></a></li>
             </ul>
         </div>
         <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>

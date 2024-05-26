@@ -19,7 +19,8 @@ from .utils import validate_filename_claims, \
     claims_basic_path_name, \
     claims_policy_path_name, \
     policies_path_name, \
-    monet_result_all_path_name
+    monet_result_all_path_name, \
+    upload_queries_temp
 
 
 class Fibas(models.Model):
@@ -160,8 +161,7 @@ class UserSql(models.Model):
     query = models.TextField()
 
     def __str__(self):
-        return self.name
-
+        return self.query
 
 class ExecuteSql(models.Model):
     db_name = models.CharField(max_length=100)
@@ -170,13 +170,29 @@ class ExecuteSql(models.Model):
         return self.db_name
 
 
+class ExecuteQuery(models.Model):
+
+    db_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.db_name
+
+# Objects query
+class UserQuery(models.Model):
+    file_name = models.CharField(max_length=255, blank=True, null=True)
+    query_file = models.FileField(upload_to=upload_queries_temp, null=True, blank=True)
+    fibas = models.ForeignKey(Fibas, on_delete=models.CASCADE, null=True, related_name='user_queries')
+    applied_at = models.DateTimeField(null=True)
+
+    def __str__(self):
+        return str(self.file_name)
+
 class UserMacros(models.Model):
     name_macros = models.CharField(max_length=200)
     user_sql = models.ManyToManyField('UserSql', through='UserMacrosSql', through_fields=('user_macros', 'user_sql'))
 
     def __str__(self):
         return self.name_macros
-
 
 class UserMacrosSql(models.Model):
     user_macros = models.ForeignKey(UserMacros, on_delete=models.CASCADE)
@@ -189,12 +205,39 @@ class UserMacrosSql(models.Model):
     def __str__(self):
         return f'{self.user_macros} - {self.user_sql}'
 
+# Objects custom macros
+
+class User_Custom_Macros(models.Model):
+    name_custom_macros = models.CharField(max_length=200)
+    user_query = models.ManyToManyField('UserQuery', through='UserCustomMacrosSql', through_fields=('user_custom_macros', 'user_query'))
+    fibas = models.ForeignKey(Fibas, on_delete=models.CASCADE, null=True, related_name='user_custom_macros')
+    def __str__(self):
+        return self.name_custom_macros
+
+# Objects custom macros
+class UserCustomMacrosSql(models.Model):
+    user_custom_macros = models.ForeignKey(User_Custom_Macros, on_delete=models.CASCADE)
+    user_query = models.ForeignKey(UserQuery, on_delete=models.CASCADE)
+    order = models.IntegerField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f'{self.user_custom_macros} - {self.user_query}'
 
 class ExecuteMacros(models.Model):
+    db_name = models.CharField(max_length=100)
+    def __str__(self):
+        return self.db_name
+
+# Execute custom macros
+class ExecuteCustomMacros(models.Model):
     db_name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.db_name
+
 
 
 @receiver(pre_delete, sender=UserSql)

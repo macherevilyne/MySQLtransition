@@ -2,11 +2,12 @@ import os
 import re
 import datetime
 import configparser
+import shutil
 
 from dateutil.relativedelta import relativedelta
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 
-
+from django.conf import settings
 menu = [
     {'title': 'Fibas', 'url_name': 'fibas'},
     {'title': 'Term', 'url_name': 'term'},
@@ -89,7 +90,9 @@ def create_name_database_with_date(filename, database_name: str):
     # minus 1 month
     date = datetime.date(int(year), int(month), int(day)) - relativedelta(months=1)
     year, month, day = datetime.datetime.strptime(str(date), '%Y-%M-%d').strftime('%Y,%M,%d').split(',')
+    print(database_name, 'database_name!!!')
     db_name = database_name.upper()
+    print(db_name, 'DB_NAME!!!')
     result = f'{db_name}_{year[2:]}{month}'
     return result
 
@@ -110,6 +113,55 @@ def get_path_name_input(filename, file_folder_name: str, provider_name: str):
     path_name_input = os.path.join('Products', provider_name, 'input', folder_name, file_folder_name, str(filename))
     return path_name_input
 
+'''Moving files. If the files are in a temporary folder, they are moved to the database folder '''
+
+def move_query_file(query_instance):
+    if not query_instance.fibas:
+        return
+    provider_name = 'FIBAS'
+    original_file_path = query_instance.query_file.path
+    new_folder_path = os.path.join(settings.MEDIA_ROOT, 'Products', provider_name, 'input', query_instance.fibas.title, 'upload_queries')
+    new_file_path = os.path.join(new_folder_path, os.path.basename(original_file_path))
+
+    if original_file_path == new_file_path:
+        print("Файл уже находится в нужном месте.")
+        return query_instance
+
+    try:
+        if not os.path.exists(new_folder_path):
+            os.makedirs(new_folder_path)
+
+        try:
+
+            if 'temp' in original_file_path:
+                if os.path.exists(new_file_path):
+                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+                    base_filename, file_extension = os.path.splitext(os.path.basename(original_file_path))
+                    new_filename = f"{base_filename}_{timestamp}{file_extension}"
+                    new_file_path = os.path.join(new_folder_path, new_filename)
+                    query_instance.file_name = new_filename
+                    query_instance.save()
+                shutil.move(original_file_path, new_file_path)
+            else:
+                shutil.copy(original_file_path, new_file_path)
+
+        except shutil.SameFileError:
+            print("Попытка переместить файл в его текущее расположение.")
+
+        relative_path = os.path.relpath(new_file_path, settings.MEDIA_ROOT)
+        query_instance.query_file.name = relative_path
+        query_instance.save()
+        return query_instance
+
+    except PermissionError:
+        print('Нет доступа к файлу. Возможно, он занят другим процессом')
+
+''' Delete query from path '''
+
+def delete_query_file(query_instance):
+    file_path = query_instance.query_file.path
+    if os.path.exists(file_path):
+        os.remove(file_path)
 
 class ConnectConfig:
 

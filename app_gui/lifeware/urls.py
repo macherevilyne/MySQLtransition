@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:pk>/macros/', views.MacrosView.as_view(), name='life_ware_macros'),
     path('<int:pk>/macros/lifeware-run-check-new/', views.run_check_new, name='life_ware_run_check_new'),
     path('<int:pk>/macros/lifeware-run-termsheet-checks/', views.run_termsheet_checks, name='life_ware_run_termsheet_checks'),
+    # path('<int:pk>/macros/lifeware-run-monetinputs/', views.run_m_monetinputs, name='life_ware_run_monetinputs'),
     path('custom_macros/', views.CustomMacrosView.as_view(), name='life_ware_custom_macros'),
     path('add_sql/', views.AddSqlView.as_view(), name='life_ware_add_sql'),
     path('user_sql_list/', views.UserSqlListView.as_view(), name='life_ware_user_sql_list'),

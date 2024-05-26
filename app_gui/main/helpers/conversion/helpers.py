@@ -1,5 +1,7 @@
 import logging
 import os
+
+import chardet as chardet
 import pandas as pd
 
 from main.helpers.sql_connection.sql_connection import Connector
@@ -14,8 +16,13 @@ class HelpersConversion:
         self.files = Files()
 
     def csv_read(self, path_file: str, skiprows=None):
-        df = pd.read_csv(path_file, low_memory=False, on_bad_lines='skip', sep=';', encoding='utf-8',
+        with open(path_file, 'rb') as f:
+            rawdata = f.read()
+        encoding = chardet.detect(rawdata)['encoding']
+
+        df = pd.read_csv(path_file, low_memory=False, on_bad_lines='skip', sep=';', encoding=encoding,
                          skiprows=skiprows)
+
         df.columns = df.columns.str.strip()
         return df
 
@@ -36,7 +43,7 @@ class HelpersConversion:
             logger.info(f'path_folder: {path_folder} \n'
                         f'file_name: {file_name}')
             raise e
-
+        print("ИЛИ ОШИБКА ТУТ")
         connection = self.sql.connection(db_name)
         path_file = os.path.join(path_folder, csv_file)
         csv_read = self.csv_read(path_file=path_file, skiprows=skiprows)

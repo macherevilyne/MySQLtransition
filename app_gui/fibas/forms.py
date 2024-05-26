@@ -1,7 +1,8 @@
 from os import path
 from django import forms
 
-from .models import Fibas, Parameters, ExcelFile, UserSql, ExecuteSql, UserMacros, ExecuteMacros
+from .models import Fibas, Parameters, ExcelFile, UserSql, ExecuteSql, UserMacros, ExecuteMacros, UserQuery, \
+    ExecuteQuery, User_Custom_Macros, ExecuteCustomMacros
 
 
 class ClearableFileInput(forms.ClearableFileInput):
@@ -54,6 +55,21 @@ class UserSqlForm(forms.ModelForm):
         model = UserSql
         fields = ['name', 'query']
 
+#Form for dowloding querries
+class UserQueryForm(forms.ModelForm):
+
+    class Meta:
+        model = UserQuery
+        fields = [ 'query_file']
+
+#Form for executing query in db_name
+class ExecuteQueryForm(forms.ModelForm):
+    db_name = forms.ModelChoiceField(queryset=Fibas.objects.all())
+
+    class Meta:
+        model = ExecuteQuery
+        fields = ['db_name']
+
 
 class ExecuteSqlForm(forms.ModelForm):
     db_name = forms.ModelChoiceField(queryset=Fibas.objects.all())
@@ -72,9 +88,26 @@ class UserMacrosForm(forms.ModelForm):
         widgets = {'user_sql': forms.CheckboxSelectMultiple(attrs={'class': "checkbox"})}
 
 
+# Form for creating custom macros
+class UserCustomMacrosForm(forms.ModelForm):
+    order = forms.IntegerField(widget=forms.HiddenInput(), required=False)
+    class Meta:
+        model = User_Custom_Macros
+        fields = ['name_custom_macros', 'user_query']
+        widgets = {'user_query': forms.CheckboxSelectMultiple(attrs={'class': "checkbox"})}
+
+
 class ExecuteMacrosForm(forms.ModelForm):
     db_name = forms.ModelChoiceField(queryset=Fibas.objects.all())
 
     class Meta:
         model = ExecuteMacros
+        fields = ['db_name']
+
+# Form for executing custom macros in db_name
+class ExecuteCustomMacrosForm(forms.ModelForm):
+    db_name = forms.ModelChoiceField(queryset=Fibas.objects.all())
+
+    class Meta:
+        model = ExecuteCustomMacros
         fields = ['db_name']

@@ -17,4 +17,4 @@ FROM
 WHERE 
     (((`Policies`.`Quantum status`) = "Active")
     AND ((`Policies`.`premium payment`) <> "Monthly premium")
-    AND ((STR_TO_DATE(`Policies`.`SP commencement date`, '%d-%m-%Y')) < STR_TO_DATE('{ValDat}', '%d-%m-%Y')));
+    AND ((STR_TO_DATE(`Policies`.`SP commencement date`, '%d-%m-%Y')) < STR_TO_DATE('{ValDat}', '%Y-%m-%d %H:%i:%s')));

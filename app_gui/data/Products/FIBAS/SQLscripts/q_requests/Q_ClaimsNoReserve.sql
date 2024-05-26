@@ -24,4 +24,4 @@ WHERE
     AND (STR_TO_DATE(`ClaimsPrevious`.`betaling_eind_datum`, '%d-%m-%Y') >= STR_TO_DATE('01.01.2011', '%d.%m.%Y'))
     AND ((`Policies`.`Quantum status`)="Active")
     AND ((`Claims`.`reserveringen_openstaand`)<=0)
-    AND (STR_TO_DATE(`Claims`.`betaling_eind_datum`, '%d-%m-%Y') < STR_TO_DATE('04.01.2011', '%d.%m.%Y'))));
+    AND (STR_TO_DATE(`Claims`.`betaling_eind_datum`, '%d-%m-%Y') < STR_TO_DATE('04.01.2011', '%d.%m.%Y')));

@@ -26,6 +26,8 @@
                             <li><a href="{% url 'fibas_upload_excel_file' pk %}">Upload "MonetResultsAll" file</a></li>
                         {% endif %}
                         <li><a href="{% url 'fibas_queries' pk %}">Queries</a></li>
+                        <li><a href="{% url 'fibas_history_query_list' db_name=fibas%}">Used queries history</a></li>
+                        <li><a href="{% url 'fibas_custom_macros_list' db_name=fibas%}">Custom macros history</a></li>
                     {% endif %}
                 {% endif %}
             </ul>

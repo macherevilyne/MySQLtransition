@@ -1,0 +1,59 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div>
+    <div class="form_div">
+                <!-- Форма поиска -->
+        <form method="GET" action="{% url 'fibas_history_query_list' db_name=db_name %}">
+            <input type="text" name="query" placeholder="Search..." value="{{ request.GET.query }}">
+            <button type="submit">Search</button>
+        </form>
+        {% if user_query_list %}
+        <ol type="1">
+            {% for query in user_query_list %}
+                {% if query.fibas.title == db_name %}
+                    <li style="list-style-type: decimal;">
+                    <a href="{% url 'fibas_execute_query' db_name=db_name query_id=query.id %}"> {{ query.file_name}} {{query.applied_at|date:"d M Y H:i:s"}}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+        {% else %}
+    <div>
+        <p class="warning">Query list is empty.</p>
+    </div>
+{% endif %}
+
+        {% if is_paginated %}
+        <div>
+        <span class="step-links">
+            {% if prev_url %}
+            <a href="{{ prev_url }}"><button>&laquo;previous page</button></a>
+            {% endif %}
+
+            <span class="current">
+                {{ user_query_list.number }} {{ user_query_list.paginator.num_pages }}
+            </span>
+
+            {% if next_url %}
+            <a href="{{ next_url }}"><button>next page&raquo;</button></a>
+            {% endif %}
+        </span>
+        </div>
+        {% endif %}
+
+        <a href="{% url 'fibas_upload_query' %}">
+            <br>
+            <br>
+            <button>Add new query</button>
+        </a><br>
+    </div>
+    <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+</div>
+{% endblock %}
+
+<!--                            <a href="{% url 'fibas_edit_sql' pk=sql.id %}" style="color: white"><i class="bi bi-pencil"></i></a>-->
+<!--                            <a href="{% url 'fibas_delete_sql' sql_id=sql.id %}" style="color: red"><i class="bi bi-trash"></i></a>-->
+

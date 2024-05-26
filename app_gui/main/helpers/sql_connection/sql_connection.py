@@ -14,6 +14,7 @@ class Connector:
         config = configparser.ConfigParser()
         file_config = os.path.join(os.getcwd(), 'config.ini')
         config.read(file_config)
+        self.created_database_name = None
         self.username = config["client"]["user"]
         self.password = config["client"]["password"]
         self.host = config["client"]["host"]
@@ -24,18 +25,22 @@ class Connector:
     # open connections with database
     def connection(self, db_name=''):
         engine = create_engine(
-            f'{self.db_url}/{db_name}?charset=utf8mb4',
+            f'{self.db_url}/{db_name}?charset=utf8',
             pool_pre_ping=True,
             echo=False,
             connect_args={'auth_plugin': 'mysql_native_password'}  # need for simple password
         )
         return engine.connect()
-
     # creates database "database_YYMM"
     def create_database(self, db_name: str):
         connection = self.connection()
         sql = f'CREATE DATABASE IF NOT EXISTS {db_name}'
+        print(f"Executing SQL query: {sql}")
         connection.execute(sql)
+        print(f"Database '{db_name}' created successfully.")
+
+
+
 
     def check_database(self, db_name: str):
         connection = self.connection()
@@ -52,6 +57,14 @@ class Connector:
         for _ in result:
             return True
         return False
+    #
+    # def get_all_tables(self, db_name: str):
+    #     connection = self.connection(db_name)
+    #     sql = 'SHOW TABLES;'
+    #     result = connection.execute(sql)
+    #     tables = [row[0] for row in result]
+    #     return tables
+
 
     def check_tables(self, db_name: str, table_name: str):
         connection = self.connection(db_name)

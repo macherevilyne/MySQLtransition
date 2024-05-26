@@ -18,9 +18,18 @@ class MMonetInputs:
     def execute_monet_inputs(self, folder_name: str, file_name: str, val_dat: str, product_type: str, db_name: str):
         sql_commands = self.helpers_sql.commands_list(folder_name=folder_name, provider_name=self.provider_name,
                                                       file_name=file_name)
-        for command in sql_commands:
-            command = command.format(ValDat=val_dat, producttype=product_type)
-            self.sql.connection(db_name).execute(command)
+        if not self.check_special_column(db_name):
+            for command in sql_commands:
+                command = command.format(ValDat=val_dat, producttype=product_type)
+                self.sql.connection(db_name).execute(command)
+        else:
+            logger.info(f'Special column condition met in {db_name}. Skipping execution of macros.')
+
+    def check_special_column(self, db_name):
+        command = f"SELECT COUNT(*) FROM SpecialPartialTable WHERE Special = 'Yes';"
+        check_result = self.sql.connection(db_name).execute(command)
+        result = list(check_result)[0][0]
+        return result > 1
 
     def check_discount_column(self, db_name):
         command = f"SELECT COUNT(*) " \

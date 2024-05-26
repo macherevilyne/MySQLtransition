@@ -23,4 +23,4 @@ WHERE
     (((`Policies`.`policy terms`) <> "QL_MLB_06_2019"
     AND (`Policies`.`policy terms`) <> "QL_MLB_2021_02")
     AND (`Policies`.`Quantum status`) = "Active"
-    AND (`Policies`.`product`) = "TAF Werkloosheidsplan 2011"));
+    AND (`Policies`.`product`) = "TAF Werkloosheidsplan 2011");

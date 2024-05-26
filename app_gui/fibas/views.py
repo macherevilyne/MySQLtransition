@@ -2,6 +2,14 @@ import re
 import os
 import io
 import logging
+import shutil
+from copy import deepcopy
+from django.contrib.sessions.models import Session
+from django.contrib.sessions.backends.db import SessionStore
+
+from django.conf import settings
+from django.utils import timezone
+import sqlparse
 import sqlvalidator
 import paramiko
 
@@ -10,24 +18,29 @@ from os.path import isfile, join
 from datetime import datetime
 from stat import S_ISDIR
 
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.views import View
 from django.http import Http404, HttpResponse, JsonResponse
 from django.views.generic import ListView, CreateView, UpdateView
 from django.urls import reverse_lazy, reverse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.files.uploadedfile import SimpleUploadedFile
-
+from django.contrib import messages
 from main.utils import DataMixin, ConnectConfig, check_files_name, \
     create_name_database_with_date, check_files_name_update, get_path_name_input
 from main.helpers.sql_connection.sql_connection import Connector
 
-from .models import Fibas, Parameters, ExcelFile, UserSql, UserMacros, UserMacrosSql
+from .models import Fibas, Parameters, ExcelFile, UserSql, UserMacros, UserMacrosSql, \
+    UserQuery, ExecuteQuery, User_Custom_Macros, UserCustomMacrosSql
 from .forms import AddFilesConversionForm, ParametersForm, ExcelFileForm, UserSqlForm, \
-    ExecuteSqlForm, UserMacrosForm, ExecuteMacrosForm
+    ExecuteSqlForm, UserMacrosForm, ExecuteMacrosForm, ExecuteQueryForm, UserQueryForm, UserCustomMacrosForm, \
+    ExecuteCustomMacrosForm
 from .helpers.conversion.conversion import Conversion
 from .helpers.conversion.conversion_excel import ConversionExcel
 from .helpers.macros.Run_DB_checks import DBchecks
@@ -37,6 +50,12 @@ from .helpers.views_query.run_views_files import run_view_file
 from .utils import validate_filename_claims_sftp, validate_filename_claims_basic_sftp, \
     validate_filename_claims_policy_sftp, validate_filename_policies_sftp
 from app_gui.settings import MEDIA_ROOT
+
+
+# from main.utils import get_path_name_input_queries
+from main.utils import move_query_file
+
+from main.utils import delete_query_file
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +139,8 @@ class DatabasePageView(ListView, DataMixin):
             title = fibas.title
             # check db fibas in MySQL
             check_db_fibas = sql.check_database(title)
+
+
             if check_db_fibas:
                 claims = sql.check_table(db_name=title, table_name='Claims')
                 claims_basic = sql.check_table(db_name=title, table_name='ClaimsBasic')
@@ -241,6 +262,7 @@ class MacrosView(ListView, DataMixin):
                 if check_db_fibas and claims and claims_basic and claims_policy and policies and special_partial_table:
                     check_table_monet_inputs = Connector().check_tables(db_name=title, table_name='MonetInputs')
                     context['pk'] = self.kwargs.get('pk')
+                    context['db_name'] = title
                     c_def = self.get_user_context(title=f'Macros {title}',
                                                   check_table_monet_inputs=check_table_monet_inputs)
                     return dict(list(context.items()) + list(c_def.items()))
@@ -259,10 +281,11 @@ class QueriesView(ListView, DataMixin):
         if Fibas.objects.filter(id=pk).exists():
             f = Fibas.objects.get(id=pk)
             title = f.title
-
+            query = self.request.GET.get('query')
+            list_only_files = self.view_only_files(query=query)
+            context['list_only_files'] = list_only_files
             if Parameters.objects.filter(fibas=f).exists():
-                list_only_files = self.view_only_files()
-
+                list_only_files = self.view_only_files(query)
                 page = self.request.GET.get('page', 1)
                 paginator = Paginator(list_only_files, 10)
                 try:
@@ -278,12 +301,16 @@ class QueriesView(ListView, DataMixin):
                 return dict(list(context.items()) + list(c_def.items()))
         raise Http404()
 
-    def view_only_files(self) -> list:
+    def view_only_files(self,query ) -> list:
         provider_name = 'FIBAS'
         folder_name = 'q_requests'
         path_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'SQLscripts', folder_name)
         only_files = sorted([f for f in listdir(path_folder) if isfile(join(path_folder, f))])
+        if query:
+            only_files = [file for file in only_files if query.lower() in file.lower()]
+
         return only_files
+
 
 
 class QueryView(ListView, DataMixin):
@@ -299,19 +326,40 @@ class QueryView(ListView, DataMixin):
         if Fibas.objects.filter(id=pk).exists():
             context['pk'] = pk
             context['sql_file'] = sql_file
+
             c_def = self.get_user_context(title=f'Query {sql_file}')
             return dict(list(context.items()) + list(c_def.items()))
         raise Http404()
 
+    def view_only_files(self, query=None) -> list:
+        provider_name = 'FIBAS'
+        folder_name = 'q_requests'
+        path_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'SQLscripts', folder_name)
+        only_files = sorted([f for f in listdir(path_folder) if isfile(join(path_folder, f))])
+        return only_files
+
     def post(self, request, pk, sql_file):
         if Fibas.objects.filter(id=pk).exists():
             f = Fibas.objects.get(id=pk)
+            provider_name = 'FIBAS'
+            folder_name = 'q_requests'
+            path_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'SQLscripts', folder_name, sql_file)
             title = f.title
             parameters = Parameters.objects.get(fibas=pk)
             val_dat = parameters.val_dat
             product_type = parameters.product_type
             result_run_view_file = run_view_file(db_name=title, sql_file=sql_file,
                                                  val_dat=val_dat, product_type=product_type)
+
+            # If there are no errors when executing the standard query. Creating a new UserQuery object
+            if 'error' not in result_run_view_file:
+                user_query = UserQuery.objects.create(
+                    file_name=sql_file,
+                    query_file =path_folder,
+                    fibas=f,  # Связываем с объектом Fibas
+                    applied_at=timezone.now()
+                )
+                user_query.save()
             context = {'result': result_run_view_file}
             context.update(self.get_user_context(title=f'Query {sql_file}'))
             return render(request, self.template_name, context)
@@ -392,6 +440,7 @@ def data_conversion(request, pk):
 
             try:
                 Conversion().run(db_name)
+                print(db_name, 'DB_NAME' )
             except Exception as e:
                 response = str(e)
                 logger.error(response)
@@ -462,13 +511,19 @@ def run_m_monetinputs(request, pk):
 
                 try:
                     MMonetInputs().run(db_name, val_dat, product_type)
+                    if MMonetInputs().check_special_column(db_name):
+                        response = 'Warning!Macros are suspended until the situation is resolved. Column with Special = «Yes» have >1.'
+                        logger.info(response)
+                        return HttpResponse(response)
+                    else:
+                        response = 'Done'
+                        return HttpResponse(response)
                 except Exception as e:
                     response = str(e)
                     logger.error(response)
                     return HttpResponse(response)
 
-                response = 'Done'
-                return HttpResponse(response)
+
 
             response = 'Error'
             return HttpResponse(response)
@@ -569,6 +624,7 @@ class EditSqlView(UpdateView, DataMixin):
         if form.is_valid():
             query = form.cleaned_data['query']
             sql_query = sqlvalidator.parse(query)
+            print(sql_query,  'sql_query')
             if not sql_query.is_valid():
                 form.add_error('query', 'Invalid SQL query')
                 return self.form_invalid(form)
@@ -655,6 +711,209 @@ class ExecuteSqlView(View, DataMixin):
         return result
 
 
+
+'''Loading sql queries. Get - Getting the database and url.
+Post - checking for file extensions, reading files, checking for errors in requests, 
+saving objects of uploaded requests. When a certain url is received, a list is generated for creating macros.
+ '''
+
+class Fibas_upload_query(CreateView, DataMixin):
+    model = UserQuery
+    form_class = UserQueryForm
+    template_name = 'fibas/fibas_upload_query.html'  # Замените на свой шаблон
+    success_url = reverse_lazy('fibas_execute_query')
+
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_success_url(self):
+        db_name = self.request.GET.get('db_name')
+        next_url = self.request.GET.get('next')
+
+        if next_url:
+            return next_url
+        else:
+            return reverse('fibas_execute_query', kwargs={'db_name': db_name, 'query_id': self.object.pk})
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form()
+        if form.is_valid():
+            self.object = form.save(commit=False)
+            query_file = form.cleaned_data['query_file']
+
+            if query_file:
+                _, file_extension = os.path.splitext(query_file.name)
+
+                if file_extension.lower() != '.sql':
+                    form.add_error('query_file', f'Invalid file "{query_file.name}"  format. Please upload a SQL file')
+                    return self.form_invalid(form)
+
+            else:
+                form.add_error('query_file', 'Please choose a file')
+                return self.form_invalid(form)
+
+            try:
+                query_file = form.cleaned_data['query_file']
+                file_content = query_file.read().decode('utf-8').strip()
+
+                try:
+                    parsed_queries = sqlparse.parse(file_content)
+                    for parsed_query in parsed_queries:
+                        if any(token.ttype is sqlparse.tokens.Error for token in parsed_query.tokens):
+                            form.add_error('query_file', f'Invalid SQL query in "{query_file.name}"')
+                            return self.form_invalid(form)
+
+                except Exception as e:
+                    form.add_error('query_file', f'Error parsing SQL queries in "{query_file.name}": {e}')
+                    return self.form_invalid(form)
+
+                self.object.save()
+                file_name = query_file.name
+                self.object.file_name = file_name
+                self.macros_list = self.request.session.get('macros_list', [])
+
+                next_url = self.request.GET.get('next')
+                if next_url:
+
+                    self.macros_list.append(self.object.pk)
+                    print(self.macros_list, 'macros-list')
+                    self.request.session['macros_list'] = self.macros_list
+
+                return self.form_valid(form)
+            except Exception as e:
+                print('Exception:', e)
+                form.add_error('query_file', f'Error parsing SQL queries in "{query_file.name}": {e}')
+                return self.form_invalid(form)
+
+        else:
+            return render(request, self.template_name, {'form': form, 'errors': form.errors})
+
+
+
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title=f'Upload new query')
+        return dict(list(context.items()) + list(c_def.items()))
+
+'''Used Queries History List. Getting the database. Getting queries filtered by db_name'''
+
+class FibasUserHistoryQueryListView(ListView, DataMixin):
+    model = UserQuery
+    template_name = 'fibas/fibas_user_query_list.html'
+    context_object_name = 'user_query_list'
+    ordering = ['-id']
+    paginate_by = 15
+
+    def get_queryset(self):
+
+        db_name = self.kwargs.get('db_name')
+        query = self.request.GET.get('query')
+        queryset = UserQuery.objects.filter(fibas__title=db_name)
+
+        if query:
+            queryset = queryset.filter(file_name__icontains=query.lower())
+
+        return queryset.order_by('-id')
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        db_name = self.kwargs.get('db_name')
+        context['db_name'] = db_name
+        c_def = self.get_user_context(title=f'Used Queries History')
+        context.update(c_def)
+        paginator = context['paginator']
+        page = context['page_obj']
+        context['is_paginated'] = page.has_other_pages()
+        context['prev_url'] = f'?page={page.previous_page_number()}' if page.has_previous() else ''
+        context['next_url'] = f'?page={page.next_page_number()}' if page.has_next() else ''
+        return dict(list(context.items()) + list(c_def.items()))
+
+'''Executing query. Get - getting UserQuery objects
+Post - Getting objects according to db_name.
+If there is no error when inserting the query into the database, a UserQuery object is created 
+and the file is moved from the temporary folder to the database folder, 
+and if there is an error in the query, the file is deleted'''
+
+class ExecuteQueryView(View, DataMixin):
+    template_name = 'fibas/fibas_execute_query.html'
+
+    def get(self, request, query_id, *args, **kwargs):
+        query = UserQuery.objects.get(pk=query_id)
+        form = ExecuteQueryForm()
+        context = {'query': query,'form': form}
+        context.update(self.get_user_context(title=f'Executing query'))
+        return render(request, self.template_name, context)
+
+    def post(self, request, query_id, *args, **kwargs):
+        query = UserQuery.objects.get(pk=query_id)
+        form = ExecuteQueryForm(request.POST, request.FILES)
+        results = None
+
+        if form.is_valid():
+            db_name = form.cleaned_data['db_name']
+            fibas_object = Fibas.objects.get(title=db_name.title)
+            logger.info(f'Run sql query {query}')
+
+            results = self.execute_query(query=query, db_name=db_name)
+            logger.info(f'Run sql query {query}')
+
+            if 'error' not in results:
+                new_query = UserQuery.objects.create(
+                    file_name=query.file_name,
+                    query_file=query.query_file,
+                    fibas=fibas_object,
+                    applied_at=timezone.now()
+                )
+                new_query.save()
+                move_query_file(new_query)
+            else:
+                delete_query_file(query)
+                query.delete()
+
+        context = {'query': query, 'results': results,  'form': form}
+        context.update(self.get_user_context(title=f'Executing query'))
+        return render(request, self.template_name, context)
+
+    def execute_query(self, query, db_name):
+        connector  = Connector()
+        connection = connector .connection(db_name=db_name)
+
+        try:
+            parameters = Parameters.objects.first()
+            val_dat = parameters.val_dat if parameters else None
+            result = {
+                'result': 'Query failed'
+            }
+            results_connection = []
+            with open(query.query_file.path, 'r') as file:
+                query_content = file.read().strip()
+            query_requests = query_content.split(';')
+
+            for query_request  in query_requests:
+                query_request_with_val_dat = query_request.replace('{ValDat}', str(val_dat))
+                result_connection = connection.execute(query_request_with_val_dat )
+                results_connection.append(result_connection)
+            if results_connection:
+                result = {
+                    'result': 'Query completed'
+                }
+            logger.info(f'End sql query for  {db_name}')
+        except Exception as e:
+            logger.error(str(e))
+
+            try:
+                error_text = str(e.orig)
+            except:
+                error_text = str(e)
+
+            result = {
+                'error': error_text
+            }
+        finally:
+            connection.close()
+        return result
+
 class CustomMacrosView(ListView, DataMixin):
     model = UserSql
     template_name = 'fibas/fibas_custom_macros.html'
@@ -663,7 +922,6 @@ class CustomMacrosView(ListView, DataMixin):
         context = super().get_context_data(**kwargs)
         c_def = self.get_user_context(title=f'Custom macros')
         return dict(list(context.items()) + list(c_def.items()))
-
 
 class UserCreateMacrosView(CreateView, DataMixin):
     model = UserMacros
@@ -702,6 +960,58 @@ class UserCreateMacrosView(CreateView, DataMixin):
         context.update(c_def)
         return context
 
+'''Creating objects custom macros
+Get - Getting db_name, query list dowloding for creating custom macros
+Post - Creating custom macros object with query list. Clearing the list after creating a custom macros '''
+class UserCreateCustomMacrosView(CreateView, DataMixin):
+    model = User_Custom_Macros #
+    form_class = UserCustomMacrosForm #
+    template_name = 'fibas/fibas_user_custom_macros_create.html'
+    success_url = reverse_lazy('fibas_custom_macros_list')
+    paginate_by = 15
+
+    def get(self, request, *args, **kwargs):
+        db_name = self.kwargs.get('db_name')
+        macros_list_ids = self.request.session.get('macros_list', [])
+        macros_list_objects = UserQuery.objects.filter(id__in=macros_list_ids)
+        paginator = Paginator(macros_list_objects, self.paginate_by) #
+        page_number = request.GET.get('page') #
+        page_obj = paginator.get_page(page_number)#
+        form = UserCustomMacrosForm()
+        context = {'form': form, 'user_custom_sql_objects': page_obj, 'db_name': db_name, 'macros_list_objects':macros_list_objects } #
+        context.update(self.get_user_context(title=f'Create custom macros'))
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        form = UserCustomMacrosForm(request.POST)
+
+        if form.is_valid():
+            user_custom_macros = form.save(commit=False)
+            user_custom_macros.save()
+            sql_custom_queries = request.POST.getlist('user_query')
+            print(sql_custom_queries, 'sql_custom_queries')
+            for order, sql_query_id in enumerate(sql_custom_queries, start=1):
+                print(order, 'order')
+                print(sql_query_id, 'sql_queryID')
+                user_query = UserQuery.objects.get(pk=sql_query_id)
+                print(user_query, 'user_query')
+                UserCustomMacrosSql.objects.create(user_custom_macros=user_custom_macros, user_query=user_query, order=order)
+            request.session['macros_list'] = []
+            return redirect('execute_custom_macros', macros_id=user_custom_macros.pk)
+
+        else:
+            db_name = self.kwargs.get('db_name')
+            error_message = 'One field is required.'
+            context = {'form': form, 'user_custom_sql_objects': UserQuery.objects.all(), 'error_message': error_message, 'db_name': db_name}#
+            context.update(self.get_user_context(title=f'Create custom macros'))
+            return render(request, self.template_name, context)
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title=f'Create custom macros')
+        context.update(c_def)
+
+        return context
 
 class UserMacrosListView(ListView, DataMixin):
     model = UserMacros
@@ -714,6 +1024,7 @@ class UserMacrosListView(ListView, DataMixin):
         user_macros = UserMacros.objects.all()
         context['user_macros'] = user_macros
         return dict(list(context.items()) + list(c_def.items()))
+
 
 
 class EditMacrosView(UpdateView, DataMixin):
@@ -775,6 +1086,20 @@ def delete_macros(request, macros_id):
     macros_delete.delete()
     return HttpResponseRedirect(reverse_lazy('fibas_user_macros_list'))
 
+'''Deleting a query from a creating custom macros and database. 
+Updating the query list when creating a custom macros '''
+
+def delete_custom_macros_query(request, query_id):
+    macros_list_ids = request.session.get('macros_list', [])
+    db_name = request.GET.get('db_name', None)
+    user_query = get_object_or_404(UserQuery, id=query_id)
+
+    if query_id in macros_list_ids:
+        macros_list_ids.remove(query_id)
+        request.session['macros_list'] = macros_list_ids
+        user_query.delete()
+
+    return redirect(reverse('fibas_create_custom_macros', kwargs={'db_name': db_name}))
 
 class ExecuteMacrosView(View, DataMixin):
     template_name = 'fibas/fibas_execute_macros.html'
@@ -832,6 +1157,127 @@ class ExecuteMacrosView(View, DataMixin):
                 error_text = f'{sql_name}: {e.orig}'
             except:
                 error_text = f'{sql_name}: {e}'
+
+            result = {
+                'error': error_text
+            }
+        finally:
+            connection.close()
+        return result
+
+''' List of created user macros history '''
+class FibasUserHistoryCustomMacrosListView(ListView, DataMixin):
+    model = User_Custom_Macros
+    template_name = 'fibas/fibas_user_custom_macros_list.html'
+    context_object_name = 'user_custom_macros'
+    paginate_by = 10
+
+    def get_queryset(self):
+        db_name = self.kwargs.get('db_name')
+        queryset = User_Custom_Macros.objects.filter(fibas__title=db_name)
+        return queryset.order_by('-id')
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        c_def = self.get_user_context(title=f'Custom Macros History')
+        db_name = self.kwargs.get('db_name')
+        context['db_name'] = db_name
+        context.update(c_def)
+        paginator = context['paginator']
+        page = context['page_obj']
+        context['is_paginated'] = page.has_other_pages()
+        context['prev_url'] = f'?page={page.previous_page_number()}' if page.has_previous() else ''
+        context['next_url'] = f'?page={page.next_page_number()}' if page.has_next() else ''
+        return dict(list(context.items()) + list(c_def.items()))
+
+'''Executing macros in data base
+Get - Getting custom macros object and query list in custom macros
+Post - Getting custom macros object and list query for custom macros objects.
+If there are no errors when inserting data into the database, the remaining fields are filled in for all queries,
+Moving files to a directory with database files or deleting files from the database '''
+
+class ExecuteCustomMacrosView(View, DataMixin):
+    template_name = 'fibas/fibas_execute_custom_macros.html'
+
+    def get(self, request, macros_id, *args, **kwargs):
+        db_name = self.kwargs.get('db_name')
+        print(db_name, 'DB_NAME')
+        form = ExecuteCustomMacrosForm()
+        user_custom_macros = User_Custom_Macros.objects.get(pk=macros_id)
+        user_custom_macros_query_list = UserCustomMacrosSql.objects.filter(user_custom_macros=user_custom_macros).order_by('order')
+        context = {'user_custom_macros': user_custom_macros, 'form': form, 'user_custom_macros_query_list': user_custom_macros_query_list}
+        context.update(self.get_user_context(title=f'Executing custom macros'))
+        return render(request, self.template_name, context)
+
+    def post(self, request, macros_id, *args, **kwargs):
+        user_custom_macros = User_Custom_Macros.objects.get(pk=macros_id)
+        user_custom_macros_query_list = UserCustomMacrosSql.objects.filter(user_custom_macros=user_custom_macros).order_by('order')
+        form = ExecuteCustomMacrosForm(request.POST)
+        results = None
+        errors = []
+        if form.is_valid():
+            db_name = form.cleaned_data['db_name']
+            fibas_object_custom_macros = Fibas.objects.get(title=db_name.title)
+            user_custom_macros.fibas = fibas_object_custom_macros
+            user_custom_macros.save()
+            user_custom_macros_query_list = UserCustomMacrosSql.objects.filter(
+                user_custom_macros=user_custom_macros).order_by('order')
+            logger.info(f'Run Custom macros {user_custom_macros}')
+
+            for user_macros_sql in user_custom_macros_query_list:
+                query = user_macros_sql.user_query.query_file
+                user_query_name = user_macros_sql.user_query.file_name
+                results = self.execute_query(query_name=user_query_name, query=query, db_name=db_name)
+
+                if 'error' not in results:
+                    user_macros_sql.user_query.fibas = fibas_object_custom_macros
+                    user_macros_sql.user_query.applied_at = datetime.now()
+                    user_macros_sql.user_query.save()
+                    move_query_file(user_macros_sql.user_query)
+                else:
+                    errors.append({
+                        'query_name': user_query_name,
+                        'error': results['error']
+                    })
+                    delete_query_file(user_macros_sql.user_query)
+                    user_macros_sql.user_query.delete()
+
+            logger.info(f'End Custom macros {user_custom_macros}')
+        context = {'user_custom_macros': user_custom_macros, 'results': results, 'form': form,
+                   'user_custom_macros_query_list': user_custom_macros_query_list, 'errors': errors}
+        context.update(self.get_user_context(title=f'Executing custom macros'))
+        return render(request, self.template_name, context)
+
+    def execute_query(self, query_name, query, db_name):
+        sql = Connector()
+        connection = sql.connection(db_name=db_name)
+        try:
+            parameters = Parameters.objects.first()  # или используйте более специфичный фильтр, если требуется
+            val_dat = parameters.val_dat if parameters else None
+            result = {
+                'result': 'Query failed'
+            }
+            results_connection = []
+            with query.open() as file:
+                query_content = file.read().decode()
+                query_requests = query_content.split(';')
+                for sql_request in query_requests:
+                    query_request_with_val_dat = sql_request.replace('{ValDat}', str(val_dat))
+                    result_connection = connection.execute(query_request_with_val_dat)
+                    results_connection.append(result_connection)
+
+                if results_connection:
+                    result = {
+                        'result': 'Macros completed'
+                    }
+
+        except Exception as e:
+            logger.error(str(e))
+
+            try:
+                error_text = f'{query_name}: {e.orig}'
+            except:
+                error_text = f'{query_name}: {e}'
 
             result = {
                 'error': error_text

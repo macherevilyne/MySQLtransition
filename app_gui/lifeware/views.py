@@ -320,6 +320,55 @@ def run_termsheet_checks(request, pk):
     raise Http404()
 
 
+#
+# # Running a macros "Run M Monetinputs"
+# @csrf_exempt
+# def run_m_monetinputs(request, pk):
+#     if request.method == 'POST':
+#         if LifeWare.objects.filter(id=pk).exists():
+#             sql = Connector()
+#             life_ware = LifeWare.objects.get(id=pk)
+#             if Parameters.objects.filter(life_ware=life_ware).exists():
+#                 bestandsreport_name = os.path.basename(life_ware.bestandsreport_name.name)
+#                 db_name = create_name_database_with_date(filename=bestandsreport_name, database_name=DATABASE_NAME)
+#                 val_dat = datetime.strpЧtime(str(life_ware.parameters.val_dat.date()), '%Y-%m-%d').strftime('%d-%m-%Y')
+#                 # product_type = life_ware.parameters.product_type
+#                 parameters = Parameters.objects.get(fibas=pk)
+#                 val_dat_old = parameters.val_dat_old
+#                 if val_dat_old:
+#                     date = val_dat_old
+#                 else:
+#                     date = parameters.val_dat
+#
+#                 # Make a backup there is a table exists
+#                 table_name = 'MonetInputsUpdated'
+#                 if sql.check_tables(db_name=db_name, table_name=table_name):
+#                     sql.backup_table(db_name=db_name, table_name=table_name, date=date)
+#
+#                 try:
+#                     MMonetInputs().run(db_name, val_dat)
+#                     if MMonetInputs().check_special_column(db_name):
+#                         response = 'Warning!Macros are suspended until the situation is resolved. Column with Special = «Yes» have >1.'
+#                         logger.info(response)
+#                         return HttpResponse(response)
+#                     else:
+#                         response = 'Done'
+#                         return HttpResponse(response)
+#                 except Exception as e:
+#                     response = str(e)
+#                     logger.error(response)
+#                     return HttpResponse(response)
+#
+#             response = 'Error'
+#             return HttpResponse(response)
+#     raise Http404()
+
+
+
+
+
+
+
 class CustomMacrosView(ListView, DataMixin):
     model = UserSql
     template_name = 'lifeware/life_ware_custom_macros.html'

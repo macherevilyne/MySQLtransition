@@ -24,4 +24,5 @@ WHERE
     AND (`Policies`.`policy terms`) <> "QL_MLB_2021_02"
     AND (`Policies`.`policy terms`) <> "QL_MLB_2021_11")
     AND (`Policies`.`Quantum status`) = "Active"
-    AND (`Policies`.`WW`) = "yes"));
+    AND (`Policies`.`WW`) = "yes");
+

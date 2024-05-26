@@ -126,6 +126,7 @@ $(document).ready(function() {
     });
 });
 
+
 $(document).ready(function() {
     $(".fibas-download").click(function() {
         $("#fibas-loading-spinner").show();

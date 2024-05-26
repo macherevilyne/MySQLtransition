@@ -17,6 +17,7 @@ def run_view_file(db_name, sql_file, val_dat, product_type):
 	connection = connector.connection(db_name=db_name)
 
 	try:
+
 		sql_commands = helpers_sql.commands_list(folder_name=FOLDER_NAME, provider_name=PROVIDER_NAME, file_name=sql_file)
 		for command in sql_commands:
 			command = command.format(ValDat=val_dat, producttype=product_type)
