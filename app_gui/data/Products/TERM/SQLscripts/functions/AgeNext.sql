@@ -1,8 +1,0 @@
-CREATE FUNCTION AgeNext(DOB DATE, DOC DATE) RETURNS INT
-BEGIN
-    DECLARE Age INT;
-
-    SET Age = AgeLast(DOB, DOC) + 1;
-
-    RETURN Age;
-END;
