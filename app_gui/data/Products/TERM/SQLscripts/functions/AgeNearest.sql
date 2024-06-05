@@ -1,0 +1,11 @@
+CREATE FUNCTION AgeNearest(DOB DATE, DOC DATE)
+RETURNS INT
+BEGIN
+    DECLARE TotalDays INT;
+    DECLARE Age INT;
+
+    SET TotalDays = DATEDIFF(DOC, DOB);
+    SET Age = ROUND(TotalDays / 365.25);
+
+    RETURN Age;
+END

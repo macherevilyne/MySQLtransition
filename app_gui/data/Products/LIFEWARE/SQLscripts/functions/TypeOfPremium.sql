@@ -1,0 +1,9 @@
+CREATE FUNCTION TypeOfPremium(RP DOUBLE, SP DOUBLE) RETURNS VARCHAR(255)
+BEGIN
+    DECLARE result VARCHAR(255);
+    SET result = CASE
+        WHEN RP = 0 AND SP > 0 THEN 'SP'
+        ELSE 'RP'
+    END;
+    RETURN result;
+END;
