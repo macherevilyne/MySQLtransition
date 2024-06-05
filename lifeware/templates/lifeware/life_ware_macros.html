@@ -1,0 +1,16 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div>
+            <ul>
+                <li><button onclick="lifeWareRunCheckNew();">Run check new</button></li>
+                <li><button onclick="lifeWareRunTermsheetChecks();">Run Termsheet checks</button></li>
+                <li><button onclick="lifeWareRunTermsheetChecks();">Run M Monetinputs </button></li>
+            </ul>
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}

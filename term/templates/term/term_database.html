@@ -1,0 +1,29 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div>
+            {% if term.policydata_new_report.name and term.de_hoop_data.name %}
+            <button onclick="termDataConversion()">
+                Data conversion
+            </button>
+                {% if check_db_term and policydata and de_hoop_data %}
+                    <i class="bi bi-check2" style="color: green;"></i>
+                {% else %}
+                    <i class="bi bi-x-lg" style="color: red;"></i>
+                {% endif %}
+            {% endif %}
+            <br>
+            <ul>
+                <li><a href="{% url 'term_database_update' pk %}">Update files</a></li>
+                <li><a href="{% url 'term_parameters_entry' pk %}">Parameters Entry</a></li>
+                {% if term.parameters and check_db_term %}
+                    <li><a href="{% url 'term_macros' pk %}">Macros</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}

@@ -1,0 +1,17 @@
+CREATE FUNCTION AgeLast(DOB DATE, DOC DATE)
+RETURNS INT
+BEGIN
+    DECLARE Age INT;
+
+    SET Age = YEAR(DOC) - YEAR(DOB);
+
+    IF MONTH(DOC) < MONTH(DOB) THEN
+        SET Age = Age - 1;
+    ELSEIF MONTH(DOC) = MONTH(DOB) THEN
+        IF DAY(DOC) < DAY(DOB) THEN
+            SET Age = Age - 1;
+        END IF;
+    END IF;
+
+    RETURN Age;
+END;

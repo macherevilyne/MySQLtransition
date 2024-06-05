@@ -1,0 +1,50 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div class="form_div">
+            <h3>"{{user_custom_macros.name_custom_macros}}"</h3>
+            <div>
+                <h4>SQL queries:</h4>
+                <ol type="1">
+                  {% for user_custom_macros_query_list in user_custom_macros_query_list %}
+
+                    <li style="list-style-type: decimal;">{{ user_custom_macros_query_list.user_query }}</li>
+                  {% endfor %}
+                </ol>
+            </div>
+
+            <div>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button id="fibas-run-custom-macros" type="submit">Run macros</button>
+                </form>
+            </div>
+
+            <!-- Loading macros -->
+            <p id="fibas-loading-spinner" style="display: none;">Loading...</p>
+
+            {% if results %}
+                <h3>Query result:</h3>
+
+            {% if errors %}
+<div class="error">
+    <h3>Errors:</h3>
+    <ul>
+        {% for error in errors %}
+            <li>{{ error.query_name }}: {{ error.error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+            {% endif %}{% endif %}
+                {% if results.result %}
+                    <p class="success">{{ results.result }}</p>
+
+            {% endif %}
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div>
+            {% if policydata_to_quantum_original %}
+                <div>
+                    <ul>
+                        <li><button onclick="termGenerateMonetInputsExpDeath()">Generate Monet inputs ExpDeath</button></li>
+                        <li><button onclick="termGenerateMonetInputsTerm()">Generate Monet inputs Term</button></li>
+                        {% if monet_inputs_term %}
+                        <li><button onclick="termGenerateMonetInputsExpPL()">Generate Monet inputs ExpPL</button></li>
+                        <li><button onclick="termRunCheck()">Run check</button></li>
+                        {% endif %}
+                        <li><button onclick="termDbCheckData()">DB_CheckData</button></li>
+                    </ul>
+                </div>
+            {% else %}
+                <div>There is no table "Policydata_to_Quantum_ORIGINAL"</div>
+            {% endif %}
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}

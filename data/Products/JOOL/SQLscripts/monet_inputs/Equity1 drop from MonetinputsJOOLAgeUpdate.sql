@@ -1,0 +1,33 @@
+DROP TABLE IF EXISTS `MonetInputsJOOL_Eq1Drop`;
+CREATE TABLE IF NOT EXISTS `MonetInputsJOOL_Eq1Drop` AS
+SELECT
+    PolNo,
+    Branch,
+    FundModel,
+    RIModel,
+    Tariff,
+    TypeOfPrem,
+    `Count`,
+    PeriodIF,
+    StartYear,
+    AgeEnt1,
+    Sex1,
+    RegularContribution,
+    SingleContribution,
+    AdhocContribution,
+    TermPrem,
+    Term,
+    SA_fixed,
+    TSA,
+    DeathPerc,
+    PremFreq,
+    (1 - PercStocks1 * `Equity 1 shock`) * `FundAccValDat` AS FundAccValDat,
+    CommAccValDat,
+    ExpAccValDat,
+    SVValDat,
+    ECValDat,
+    PCValDat,
+    ClawBackValDat,
+    `Monetary` AS Expression1,
+    Country
+FROM `MonetInputsJOOL AgeUpdate`;

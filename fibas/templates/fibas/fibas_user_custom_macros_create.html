@@ -1,0 +1,90 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div class="form_div">
+            <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+            <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+            {% if macros_list_objects  %}
+                <div>
+                    {% if error_message %}
+                        <p class="error"> {{ error_message }} </p>
+                    {% endif %}
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        {{ form.name_custom_macros.label }}: {{ form.name_custom_macros }}
+                        <h5>Select custom SQL Queries:</h5>
+                        <div>
+                        <ul id="sortable">
+                            {% for query in macros_list_objects  %}
+
+                                    <li style="list-style-type: decimal;">
+                                        <input type="checkbox" name="user_query" value="{{ query.id }}" style="width: 20px; height: 20px;">
+                                        {{ query }}
+                                        <a href="{% url 'delete_custom_macros_query' query_id=query.id  %}" style="color: red"><i class="bi bi-trash"></i></a>
+
+                                    </li>
+                            {% endfor %}
+
+                        </ul>
+                        </div>
+
+                        <button type="submit">Create</button>
+                    </form>
+                </div>
+           <a href="{% url 'fibas_upload_query' %}?next={% url 'fibas_create_custom_macros' db_name=db_name %}"><button>Upload query</button></a><br>
+            <br>  <br>  <br>
+        {% if macros_list_objects.has_other_pages %}
+            <div>
+             <span class="step-links">
+                {% if macros_list_objects.has_previous %}
+
+                <li><a href="?page={{ macros_list_objects.previous_page_number }}"><button>&laquo;previous page</button></a></li>
+                {% endif %}
+
+                {% if user_custom_sql_objects.has_next %}
+                <li><a href="?page={{ macros_list_objects.next_page_number }}"><button>next page&raquo;</button></a></li>
+
+                {% endif %}
+             </span>
+            </div>
+        {% endif %}
+            {% else %}
+                <div>
+                    <ul class="warning">
+                        <li>SQL queries do not exist.</li>
+                        <li>You need to upload query.</li>
+                    </ul>
+                      <a href="{% url 'fibas_upload_query' %}?next={% url 'fibas_create_custom_macros' db_name=db_name %}"><button>Upload query</button></a><br>
+                </div>
+            {% endif %}
+
+            <script>
+                $(function() {
+                    $("#sortable").sortable();
+                    $("#sortable").disableSelection();
+                });
+                $(function() {
+                    $("#sortable").sortable({
+                    update: function(event, ui) {
+                        var order = 1;
+                        $("#sortable li").each(function() {
+                            var sqlId = $(this).find("input[type='checkbox']").val();
+                            $(this).find("input[type='hidden']").val(order);
+                            order++;
+                        });
+                    }
+                    });
+                    $("#sortable").disableSelection();
+                });
+            </script>
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}
+
+
+

@@ -1,0 +1,36 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div>
+        <div class="form_div">
+            {% if messages %}
+                <ul class="messages">
+                {% for message in messages %}
+                    <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>
+                        {{ message }}
+                    </li>
+                {% endfor %}
+            {% elif error_message %}
+                    <li class="error">
+                        {{ error_message }}
+                    </li>
+                </ul>
+            {% endif %}
+
+            {% if check_names %}
+                {% for k,name in check_names.items %}
+                    <p class="error">{{ name }}</p>
+                {% endfor %}
+            {% endif %}
+
+            <form action="{% url 'life_ware_add_files' %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" name="life_ware_add_files">Add files</button>
+            </form>
+        </div>
+        <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
+    </div>
+{% endblock %}
