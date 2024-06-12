@@ -94,7 +94,14 @@ IF(ISNULL(`Claims`.`eerste_polis_nummer`),"active",
 Year(STR_TO_DATE(`eigen_risico_start_datum`, '%d-%m-%Y')) AS `OccurrenceYear`,
 IF((SELECT `OccurrenceYear`)>=2016,
     IF((SELECT `book`)=2019 Or (SELECT `book`)=2020,"FIBAS18_q85_int15","FIBAS14_q85_int15"),"NotReinsured") AS `RIModel`,
-IF(`rate_type`="Combi","Yes","No") AS `CombiRate`
+IF(`rate_type`="Combi","Yes","No") AS `CombiRate`,
+
+
+CASE
+    WHEN Policies.discount = "ongoing" THEN "ongoing"
+    ELSE "upfront"
+END AS `DiscountType`
+
 
 FROM `Policies` LEFT JOIN (
     `Claims` LEFT JOIN `ClaimsBasic` ON `Claims`.`claim_id` = `ClaimsBasic`.`claim_id`) ON `Policies`.`policy number` = `Claims`.`eerste_polis_nummer`
