@@ -1,0 +1,94 @@
+{% extends 'main/base.html' %}
+{% block title %}Add New Product{% endblock %}
+{% block content %}
+    <h1>Add New Product</h1>
+    <form id="product-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div id="form-fields">
+            {{ form.title.label_tag }} {{ form.title }}
+
+            <br><br>
+            {{ form.files_count.label_tag }} {{ form.files_count }}
+
+            <br><br>
+
+            <label for="file_names">Type in filenames</label>
+            <div id="file_names_container"></div>
+            <br><br>
+
+            <!-- Скрытое поле для передачи значений file_names -->
+            <input type="hidden" name="file_names" id="file_names">
+
+            <button type="submit" id="submit-btn" class="disabled" disabled>Submit</button>
+        </div>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Обновить количество полей при изменении количества файлов
+            document.querySelector('[name="files_count"]').addEventListener('input', function() {
+                var filesCount = parseInt(this.value) || 0;
+                var fileNamesContainer = document.getElementById('file_names_container');
+                fileNamesContainer.innerHTML = '';
+
+                for (var i = 1; i <= filesCount; i++) {
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = 'file_names_' + i;
+                    input.placeholder = 'Filename ' + i;
+                    input.addEventListener('input', checkFields);  // Проверка полей при вводе
+                    fileNamesContainer.appendChild(input);
+                    fileNamesContainer.appendChild(document.createElement('br'));
+                }
+
+                // Проверить поля при изменении количества
+                checkFields();
+            });
+
+            function checkFields() {
+                var submitBtn = document.getElementById('submit-btn');
+                var inputs = document.querySelectorAll('#file_names_container input[name^="file_names_"]');
+                var allFilled = true;
+
+                inputs.forEach(function(input) {
+                    if (input.value.trim() === '') {
+                        allFilled = false;
+                    }
+                });
+
+                // Активировать кнопку "Submit", если все поля заполнены
+                if (allFilled && inputs.length > 0) {
+                    submitBtn.classList.remove('disabled');
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.classList.add('disabled');
+                    submitBtn.disabled = true;
+                }
+            }
+
+            // Проверка полей и заполнение скрытого поля при отправке формы
+            document.getElementById('product-form').addEventListener('submit', function(event) {
+                var inputs = document.querySelectorAll('#file_names_container input[name^="file_names_"]');
+                var allFilled = true;
+                var fileNames = [];
+
+                inputs.forEach(function(input) {
+                    if (input.value.trim() === '') {
+                        allFilled = false;
+                    } else {
+                        fileNames.push(input.value);
+                    }
+                });
+
+                if (!allFilled) {
+                    alert('Please fill in all filename fields.');
+                    event.preventDefault();  // Отменить отправку формы
+                } else {
+                    // Заполнить скрытое поле значениями из динамических полей
+                    document.getElementById('file_names').value = fileNames.join(',');
+                }
+            });
+        });
+    </script>
+{% endblock %}

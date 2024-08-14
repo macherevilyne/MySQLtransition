@@ -2,7 +2,7 @@ import logging
 
 from main.helpers.sql_connection.sql_connection import Connector
 from main.helpers.sql_connection.helpers import HelpersSQL
-
+from fibas.helpers.conversion.conversion import read_config
 logger = logging.getLogger(__name__)
 
 
@@ -14,13 +14,15 @@ class DBCheckData:
         self.helpers_sql = HelpersSQL()
         self.provider_name = 'TERM'
 
-    def db_check_data(self, folder_name: str, file_name: str, db_name: str):
+    def db_check_data(self, folder_name: str, file_name: str, db_name: str, base_path: str, new_db_name:str):
         sql_commands = self.helpers_sql.commands_list(folder_name=folder_name, provider_name=self.provider_name,
-                                                      file_name=file_name)
+                                                      file_name=file_name, db_name=db_name, base_path=base_path, new_db_name=new_db_name)
         for command in sql_commands:
             self.sql.connection(db_name).execute(command)
 
-    def run(self, db_name):
+    def run(self, db_name, new_db_name):
+        config = read_config()
+        base_path = config['client'].get('base_path')
         folder_name = 'db_check_data'
         file_names = [
             'DB - Delete DBErrorTable.sql',
@@ -63,6 +65,6 @@ class DBCheckData:
         logger.info(f'Start macros "DB_CheckData" for {db_name}')
         for file in file_names:
             logger.info(f'Run file {file}')
-            self.db_check_data(folder_name=folder_name, file_name=file, db_name=db_name)
+            self.db_check_data(folder_name=folder_name, file_name=file, db_name=db_name, base_path=base_path,new_db_name=new_db_name )
         logger.info(f'End macros "DB_CheckData" for {db_name}')
 

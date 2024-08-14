@@ -1,2 +1,0 @@
-CREATE TABLE IF NOT EXISTS Test_policies AS
-SELECT * FROM Policies;

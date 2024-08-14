@@ -4,13 +4,20 @@
 
 {% block content %}
     <h4>Choose Product</h4>
-    <ul id="mainmenu" class="mainmenu">
-        {% for m in menu %}
+<ul id="mainmenu" class="mainmenu">
+    {% for m in menu %}
+        {% with url=m.url_name %}
             <li>
-                <a href="{% url m.url_name %}">
+                <a class="{% if url == request.path %}active-point{% endif %}" href="{{ url }}">
                     {{ m.title }}
+
                 </a>
             </li>
-        {% endfor %}
-    </ul>
+        {% endwith %}
+    {% endfor %}
+</ul>
+
+    <a href="{% url 'add_new_product' %}">
+        <button type="button">Add New Product</button>
+    </a>
 {% endblock %}

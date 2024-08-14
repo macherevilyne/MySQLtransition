@@ -9,6 +9,7 @@ urlpatterns = [
     path('term/', include('term.urls')),
     path('lifeware/', include('lifeware.urls')),
     path('jool/', include('jool.urls')),
+    path('new_product/', include('add_new_product.urls')),
 
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

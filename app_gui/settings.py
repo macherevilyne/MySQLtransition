@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 import os
+from configparser import ConfigParser
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     'term',
     'lifeware',
     'jool',
+    'add_new_product',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -122,7 +124,11 @@ USE_TZ = True
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATIC_URL = 'static/'
 MEDIA_URL = 'data/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'data')
+
+config = ConfigParser()
+config.read(os.path.join(BASE_DIR, 'config.ini'))
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'data')
+MEDIA_ROOT = config.get('client', 'base_path')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field

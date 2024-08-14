@@ -1,7 +1,7 @@
 import logging
 
 from main.helpers.sql_connection.sql_connection import Connector
-
+from fibas.helpers.conversion.conversion import read_config
 logger = logging.getLogger(__name__)
 
 
@@ -12,13 +12,15 @@ class DBchecks:
         self.sql = Connector()
         self.provider_name = 'FIBAS'
 
-    def delete_table(self, db_name):
+    def delete_table(self, db_name, new_db_name):
+        config = read_config()
+        base_path = config['client'].get('base_path')
         folder_name = 'delete'
         file = 'DBP00 - Delete DBP error table.sql'
         self.sql.execute_macros(folder_name=folder_name, provider_name=self.provider_name,
-                                file_name=file, db_name=db_name)
+                                file_name=file, db_name=db_name, base_path=base_path, new_db_name=new_db_name)
 
-    def check(self, db_name):
+    def check(self, db_name, new_db_name):
         folder_name = 'checks'
         file_name = [
             'DBP01 - Check policy number.sql',
@@ -59,12 +61,15 @@ class DBchecks:
             'DBP36 - Check Insured amount WW.sql',
             'DBP37 - Check rate_type.sql'
         ]
+
         for file in file_name:
+            config = read_config()
+            base_path = config['client'].get('base_path')
             logger.info(f'Run file {file}')
             self.sql.execute_macros(folder_name=folder_name, provider_name=self.provider_name,
-                                    file_name=file, db_name=db_name)
+                                    file_name=file, db_name=db_name,base_path=base_path, new_db_name=new_db_name)
 
-    def run(self, db_name):
-        self.delete_table(db_name)
-        self.check(db_name)
+    def run(self, db_name, new_db_name):
+        self.delete_table(db_name, new_db_name=new_db_name)
+        self.check(db_name, new_db_name=new_db_name)
         logger.info(f'End macros "Run DB checks" for {db_name}')

@@ -2,7 +2,7 @@ import logging
 
 from main.helpers.sql_connection.sql_connection import Connector
 from main.helpers.sql_connection.helpers import HelpersSQL
-
+from fibas.helpers.conversion.conversion import read_config
 logger = logging.getLogger(__name__)
 
 
@@ -15,20 +15,20 @@ class Check:
         self.provider_name = 'FIBAS'
 
     # executes macros "Run check" with arguments "MaxDisable"
-    def execute_run_check(self, folder_name: str, file_name: str, max_disable: str, db_name: str):
-        sql_commands = self.helpers_sql.commands_list(folder_name=folder_name, provider_name=self.provider_name,
-                                                      file_name=file_name)
+    def execute_run_check(self, folder_name: str, file_name: str, max_disable: str, db_name: str, base_path, new_db_name: str):
+        sql_commands = self.helpers_sql.commands_list(folder_name=folder_name, provider_name=self.provider_name, db_name=db_name,
+                                                 base_path=base_path, file_name=file_name, new_db_name=new_db_name)
         for command in sql_commands:
             command = command.format(MaxDisable=max_disable)
             self.sql.connection(db_name).execute(command)
 
-    def delete_table(self, db_name):
+    def delete_table(self, db_name,base_path, new_db_name):
         folder_name = 'delete'
         file_name = '00 - Delete error table.sql'
         self.sql.execute_macros(folder_name=folder_name, provider_name=self.provider_name,
-                                file_name=file_name, db_name=db_name)
+                                file_name=file_name, db_name=db_name,base_path=base_path, new_db_name=new_db_name)
 
-    def check(self, max_disable, db_name):
+    def check(self, max_disable, db_name,new_db_name ):
         folder_name = 'checks'
         file_name = [
             '01 - FIBAS status check.sql',
@@ -52,10 +52,15 @@ class Check:
             '19 - Occurrence year check.sql'
         ]
         for file in file_name:
-            logger.info(f'Run file {file}')
-            self.execute_run_check(folder_name=folder_name, file_name=file, max_disable=max_disable, db_name=db_name)
+            config = read_config()
+            base_path = config['client'].get('base_path')
 
-    def run(self, max_disable, db_name):
-        self.delete_table(db_name=db_name)
-        self.check(max_disable=max_disable, db_name=db_name)
+            logger.info(f'Run file {file}')
+            self.execute_run_check(folder_name=folder_name, file_name=file, max_disable=max_disable, db_name=db_name, base_path=base_path,new_db_name=new_db_name)
+
+    def run(self, max_disable, db_name, new_db_name):
+        config = read_config()
+        base_path = config['client'].get('base_path')
+        self.delete_table(db_name=db_name,base_path=base_path, new_db_name=new_db_name)
+        self.check(max_disable=max_disable, db_name=db_name,new_db_name=new_db_name)
         logger.info(f'End macros "Run Check" for {db_name}')

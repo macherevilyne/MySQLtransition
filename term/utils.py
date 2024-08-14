@@ -1,5 +1,5 @@
 from main.utils import validate_filename, create_name_database_with_date, get_path_name_input
-
+from fibas.helpers.conversion.conversion import read_config
 
 def validate_filename_policydata_new_report(value):
     correct_name = 'Policydata'
@@ -18,9 +18,10 @@ def validate_filename_claims(value):
 
 def _get_path_name(filename, file_folder_name):
     provider_name = 'TERM'
-    path = get_path_name_input(filename=filename, file_folder_name=file_folder_name, provider_name=provider_name)
+    config = read_config()
+    base_path = config['client'].get('base_path')
+    path = get_path_name_input(filename=filename, file_folder_name=file_folder_name, provider_name=provider_name, base_path=base_path)
     return path
-
 
 def policydata_new_report_path_name(instance, filename):
     file_folder_name = 'policydata_new_report'

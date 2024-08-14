@@ -5,23 +5,32 @@ import configparser
 import shutil
 
 from dateutil.relativedelta import relativedelta
-from django.core.exceptions import ValidationError, PermissionDenied
-
+from django.core.exceptions import ValidationError
+from django.urls import reverse
 from django.conf import settings
-menu = [
-    {'title': 'Fibas', 'url_name': 'fibas'},
-    {'title': 'Term', 'url_name': 'term'},
-    {'title': 'Life Ware', 'url_name': 'lifeware'},
-    {'title': 'Jool', 'url_name': 'jool'},
-]
+from add_new_product.models import New_product
 
+
+
+def get_menu():
+    latest_product_titles = New_product.objects.order_by('-id').values_list('title', flat=True)
+    menu = [
+        {'title': 'Fibas', 'url_name': reverse('fibas')},  # Пример статического URL
+        {'title': 'Term', 'url_name': reverse('term')},
+        {'title': 'Life Ware', 'url_name': reverse('lifeware')},
+        {'title': 'Jool', 'url_name': reverse('jool')},
+    ]
+    for title in latest_product_titles:
+        url = reverse('new_product', kwargs={'title': title})
+        menu.append({'title': title, 'url_name': url})
+    return menu
 
 class DataMixin:
     paginate_by = 20
 
     def get_user_context(self, **kwargs):
         context = kwargs
-        user_menu = menu.copy()
+        user_menu = get_menu()  # Получаем актуальное меню с помощью функции get_menu
         context['menu'] = user_menu
         return context
 
@@ -108,10 +117,12 @@ def get_db_name_previous_year(filename, database_name: str):
     return result
 
 
-def get_path_name_input(filename, file_folder_name: str, provider_name: str):
+
+def get_path_name_input(filename, file_folder_name: str, provider_name: str, base_path: str):
     folder_name = create_name_database_with_date(filename=filename, database_name=provider_name)
-    path_name_input = os.path.join('Products', provider_name, 'input', folder_name, file_folder_name, str(filename))
+    path_name_input = os.path.join(base_path,'Products', provider_name,'input', folder_name, file_folder_name, str(filename))
     return path_name_input
+
 
 '''Moving files. If the files are in a temporary folder, they are moved to the database folder '''
 
@@ -155,6 +166,7 @@ def move_query_file(query_instance):
 
     except PermissionError:
         print('Нет доступа к файлу. Возможно, он занят другим процессом')
+
 
 ''' Delete query from path '''
 

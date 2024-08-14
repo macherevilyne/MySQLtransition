@@ -12,6 +12,7 @@ class Files:
     # search name files
     def get_file(self, file_name: str, path_folder: str):
         only_files = [f for f in listdir(path_folder) if isfile(join(path_folder, f))]
+        print('ONLY_FILES', only_files)
         for file in only_files:
             if file_name in file:
                 return file
@@ -23,11 +24,13 @@ class Files:
             raise OSError(2, 'No such file or directory')
 
     # get the folder where files are uploaded
-    def get_input_folder(self, folder_name: str, provider_name: str, db_name: str) -> str:
-        input_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'input', db_name, folder_name)
+    def get_input_folder(self,base_path:str, file_folder_name: str, provider_name: str, db_name: str) -> str:
+        # input_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'input', db_name, file_folder_name)
+        input_folder = os.path.join(os.getcwd(), base_path, 'Products', provider_name, 'input', db_name, file_folder_name)
+
         return input_folder
 
     # get folder with sql files
-    def get_folder_sql(self, folder_name: str, provider_name: str) -> str:
-        folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'SQLscripts', folder_name)
+    def get_folder_sql(self, folder_name: str, provider_name: str, base_path:str) -> str:
+        folder = os.path.join(os.getcwd(), base_path, 'Products', provider_name, 'SQLscripts', folder_name)
         return folder

@@ -6,7 +6,7 @@ import shutil
 from copy import deepcopy
 from django.contrib.sessions.models import Session
 from django.contrib.sessions.backends.db import SessionStore
-
+from fibas.helpers.conversion.conversion import read_config
 from django.conf import settings
 from django.utils import timezone
 import sqlparse
@@ -81,7 +81,7 @@ class FibasView(ListView, DataMixin):
 class UploadView(CreateView, DataMixin):
     form_class = AddFilesConversionForm
     template_name = 'fibas/fibas_add_files.html'
-
+#
     def get_success_url(self):
         return reverse('fibas_parameters_entry', kwargs={'pk': self.object.pk})
 
@@ -304,7 +304,9 @@ class QueriesView(ListView, DataMixin):
     def view_only_files(self,query ) -> list:
         provider_name = 'FIBAS'
         folder_name = 'q_requests'
-        path_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'SQLscripts', folder_name)
+        config = read_config()
+        base_path = config['client'].get('base_path')
+        path_folder = os.path.join(os.getcwd(), base_path, 'Products', provider_name, 'SQLscripts', folder_name)
         only_files = sorted([f for f in listdir(path_folder) if isfile(join(path_folder, f))])
         if query:
             only_files = [file for file in only_files if query.lower() in file.lower()]
@@ -345,11 +347,16 @@ class QueryView(ListView, DataMixin):
             folder_name = 'q_requests'
             path_folder = os.path.join(os.getcwd(), 'data', 'Products', provider_name, 'SQLscripts', folder_name, sql_file)
             title = f.title
+            if "_" in title:
+                prefix, date_part = title.split("_", 1)
+                new_db_name = f"fibas_{date_part}"
+            else:
+                new_db_name = "fibas"
             parameters = Parameters.objects.get(fibas=pk)
             val_dat = parameters.val_dat
             product_type = parameters.product_type
             result_run_view_file = run_view_file(db_name=title, sql_file=sql_file,
-                                                 val_dat=val_dat, product_type=product_type)
+                                                 val_dat=val_dat, product_type=product_type, new_db_name=new_db_name)
 
             # If there are no errors when executing the standard query. Creating a new UserQuery object
             if 'error' not in result_run_view_file:
@@ -439,7 +446,12 @@ def data_conversion(request, pk):
             Connector().create_database(db_name)
 
             try:
-                Conversion().run(db_name)
+                if "_" in db_name:
+                    prefix, date_part = db_name.split("_", 1)
+                    new_db_name = f"fibas_{date_part}"
+                else:
+                    new_db_name = "fibas"
+                Conversion().run(db_name, new_db_name=new_db_name)
                 print(db_name, 'DB_NAME' )
             except Exception as e:
                 response = str(e)
@@ -474,7 +486,12 @@ def run_db_checks(request, pk):
                 sql.backup_table(db_name=db_name, table_name=table_name, date=date)
 
             try:
-                DBchecks().run(db_name)
+                if "_" in db_name:
+                    prefix, date_part = db_name.split("_", 1)
+                    new_db_name = f"fibas_{date_part}"
+                else:
+                    new_db_name = "fibas"
+                DBchecks().run(db_name, new_db_name=new_db_name)
             except Exception as e:
                 response = str(e)
                 logger.error(response)
@@ -495,10 +512,20 @@ def run_m_monetinputs(request, pk):
             if Parameters.objects.filter(fibas=f).exists():
                 claims_name = os.path.basename(f.claims.name)
                 db_name = create_name_database_with_date(filename=claims_name, database_name=DATABASE_NAME)
+
                 val_dat = datetime.strptime(str(f.parameters.val_dat.date()), '%Y-%m-%d').strftime('%d-%m-%Y')
+                print(val_dat, 'VAL_DAT')
                 product_type = f.parameters.product_type
                 parameters = Parameters.objects.get(fibas=pk)
                 val_dat_old = parameters.val_dat_old
+
+                if "_" in db_name:
+                    prefix, date_part = db_name.split("_", 1)
+                    new_db_name = f"fibas_{date_part}"
+                else:
+                    new_db_name = "fibas"
+
+                print(new_db_name, 'new_db_name')
                 if val_dat_old:
                     date = val_dat_old
                 else:
@@ -510,7 +537,7 @@ def run_m_monetinputs(request, pk):
                     sql.backup_table(db_name=db_name, table_name=table_name, date=date)
 
                 try:
-                    MMonetInputs().run(db_name, val_dat, product_type)
+                    MMonetInputs().run(db_name, val_dat, product_type, new_db_name)
                     if MMonetInputs().check_special_column(db_name):
                         response = 'Warning!Macros are suspended until the situation is resolved. Column with Special = «Yes» have >1.'
                         logger.info(response)
@@ -553,7 +580,12 @@ def run_check(request, pk):
                 sql.backup_table(db_name=db_name, table_name=table_name, date=date)
 
             try:
-                Check().run(max_disable=max_disable, db_name=db_name)
+                if "_" in db_name:
+                    prefix, date_part = db_name.split("_", 1)
+                    new_db_name = f"fibas_{date_part}"
+                else:
+                    new_db_name = "fibas"
+                Check().run(max_disable=max_disable, db_name=db_name, new_db_name=new_db_name)
             except Exception as e:
                 response = str(e)
                 logger.error(response)
@@ -1409,7 +1441,10 @@ class SFTPFileManagerView(View, DataMixin):
             })
             return render(request, self.template_name, context)
 
-        destination_path = get_path_name_input(filename=file_name, file_folder_name=file_folder_name, provider_name=DATABASE_NAME)
+        config = read_config()
+        base_path = config['client'].get('base_path')
+
+        destination_path = get_path_name_input(filename=file_name, file_folder_name=file_folder_name, provider_name=DATABASE_NAME, base_path=base_path)
         destination_path = os.path.join(MEDIA_ROOT, destination_path)
 
         remote_file_path = os.path.join(path, file_name)

@@ -1,0 +1,18 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+        {% for field in form %}
+<br>
+                {{ field.label_tag }}
+                {{ field }}
+                {{ field.errors }}
+        {% endfor %}
+    <br>
+    <br><button type="submit">Submit</button>
+</form>
+{% endblock %}

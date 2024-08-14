@@ -57,14 +57,6 @@ class Connector:
         for _ in result:
             return True
         return False
-    #
-    # def get_all_tables(self, db_name: str):
-    #     connection = self.connection(db_name)
-    #     sql = 'SHOW TABLES;'
-    #     result = connection.execute(sql)
-    #     tables = [row[0] for row in result]
-    #     return tables
-
 
     def check_tables(self, db_name: str, table_name: str):
         connection = self.connection(db_name)
@@ -99,8 +91,8 @@ class Connector:
                 logger.error(str(e))
 
     # executes other macros
-    def execute_macros(self, folder_name: str, provider_name: str, file_name: str, db_name: str):
+    def execute_macros(self, folder_name: str, provider_name: str, file_name: str,base_path:str, db_name: str, new_db_name:str):
         sql_commands = self.helpers_sql.commands_list(folder_name=folder_name, provider_name=provider_name,
-                                                      file_name=file_name)
+                                                      file_name=file_name,base_path=base_path, db_name=db_name, new_db_name=new_db_name)
         for command in sql_commands:
             self.connection(db_name).execute(command)

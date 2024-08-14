@@ -27,10 +27,10 @@ function ajaxRequestTermDataConversion() {
 }
 
 
-function termGenerateMonetInputsExpDeath() {
+function termGenerateMonetInputs() {
     $.ajax({
         type: "POST",
-        url: 'term-generate-monet-inputs-exp-death/',
+        url: 'generate-monet-inputs/',
         data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
         beforeSend : function (){
             $("#upper-block").css({"display": "block"});
@@ -44,38 +44,38 @@ function termGenerateMonetInputsExpDeath() {
 }
 
 
-function termGenerateMonetInputsTerm() {
-    $.ajax({
-        type: "POST",
-        url: 'term-generate-monet-inputs-term/',
-        data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
-        beforeSend : function (){
-            $("#upper-block").css({"display": "block"});
-        },
-        success: function (response) {
-            $("#upper-block").css({"display": "none"});
-            alert(response);
-            location.reload();
-        }
-    });
-}
+//function termGenerateMonetInputsTerm() {
+//    $.ajax({
+//        type: "POST",
+//        url: 'term-generate-monet-inputs-term/',
+//        data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
+//        beforeSend : function (){
+//            $("#upper-block").css({"display": "block"});
+//        },
+//        success: function (response) {
+//            $("#upper-block").css({"display": "none"});
+//            alert(response);
+//            location.reload();
+//        }
+//    });
+//}
 
-
-function termGenerateMonetInputsExpPL() {
-    $.ajax({
-        type: "POST",
-        url: 'term-generate-monet-inputs-exp-pl/',
-        data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
-        beforeSend : function (){
-            $("#upper-block").css({"display": "block"});
-        },
-        success: function (response) {
-            $("#upper-block").css({"display": "none"});
-            alert(response);
-            location.reload();
-        }
-    });
-}
+//
+//function termGenerateMonetInputsExpPL() {
+//    $.ajax({
+//        type: "POST",
+//        url: 'generate-monet-inputs/',
+//        data: {csrfmiddlewaretoken: '{{ csrf_token }}'},
+//        beforeSend : function (){
+//            $("#upper-block").css({"display": "block"});
+//        },
+//        success: function (response) {
+//            $("#upper-block").css({"display": "none"});
+//            alert(response);
+//            location.reload();
+//        }
+//    });
+//}
 
 
 function termDbCheckData() {

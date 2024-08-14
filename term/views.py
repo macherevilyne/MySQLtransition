@@ -17,13 +17,14 @@ from main.utils import DataMixin, check_files_name, create_name_database_with_da
 from main.helpers.sql_connection.sql_connection import Connector
 
 from .helpers.macros.db_checkdata import DBCheckData
-from .helpers.macros.generate_monet_inputs_exp_death import GenerateMonetInputsExpDeath
-from .helpers.macros.generate_monet_inputs_term import GenerateMonetInputsTerm
+# from .helpers.macros.generate_monet_inputs_exp_death import GenerateMonetInputsExpDeath
+from .helpers.macros.generate_monet_inputs import GenerateMonetInputs
+# from .helpers.macros.generate_monet_inputs_term import GenerateMonetInputsTerm
 from .helpers.macros.generate_monetinputs_exppl import GenerateMonetInputsExpPL
 from .helpers.macros.run_check import RunCheck
 from .models import Term, Parameters, UserSql, UserMacros, UserMacrosSql
 from .forms import AddFilesConversionForm, ParametersForm, UserSqlForm, ExecuteSqlForm, UserMacrosForm, ExecuteMacrosForm
-
+from fibas.helpers.conversion.conversion import read_config
 from .helpers.conversion.conversion import Conversion
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class UploadView(CreateView, DataMixin):
         return dict(list(context.items()) + list(c_def.items()))
 
     def get_success_url(self):
-        return reverse('term')
+        return reverse('term_parameters_entry', kwargs={'pk': self.object.pk})
 
     # Validate forms
     def form_valid(self, form):
@@ -69,10 +70,11 @@ class UploadView(CreateView, DataMixin):
                 try:
                     self.object = form.save()
                     return redirect(self.get_success_url())
-                except TypeError:
+                except TypeError as e:
                     error_message = 'The form cannot be empty'
+                    logger.error(f'TypeError occurred: {str(e)}')
+                    logger.info(f'self.object: {self.object}')
                     logger.info(error_message)
-                    logger.info(f'self.object {self.object}')
                     return self.render_to_response(self.get_context_data(form=form,
                                                                          check_names=check_names,
                                                                          error_message=error_message))
@@ -199,7 +201,7 @@ class ParametersView(CreateView, DataMixin):
 class MacrosView(ListView, DataMixin):
     model = Term
     template_name = 'term/term_macros.html'
-    success_url = reverse_lazy('macros')
+    success_url = reverse_lazy('term_macros')
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -229,12 +231,20 @@ def data_conversion(request, pk):
             f = Term.objects.get(id=pk)
             filename = os.path.basename(f.policydata_new_report.name)
             db_name = create_name_database_with_date(filename=filename, database_name=DATABASE_NAME)
+
             Connector().create_database(db_name)
 
             db_name_previous_year = get_db_name_previous_year(filename=db_name, database_name=DATABASE_NAME)
-
+            config = read_config()
+            base_path = config['client'].get('base_path')
             try:
-                Conversion().run(db_name=db_name, db_name_previous_year=db_name_previous_year)
+                if "_" in db_name:
+                    prefix, date_part = db_name.split("_", 1)
+                    new_db_name = f"fibas_{date_part}"
+                else:
+                    new_db_name = "fibas"
+
+                Conversion().run(db_name=db_name, db_name_previous_year=db_name_previous_year, base_path=base_path, new_db_name=new_db_name)
             except Exception as e:
                 response = str(e)
                 logger.error(response)
@@ -244,70 +254,26 @@ def data_conversion(request, pk):
             return HttpResponse(response)
     raise Http404()
 
-
 @csrf_exempt
-def run_generate_monet_inputs_exp_pl(request, pk):
+def run_generate_monet_inputs(request, pk):
     if request.method == 'POST':
         if Term.objects.filter(id=pk).exists():
             sql = Connector()
             term = Term.objects.get(id=pk)
+
             policydata_new_report_name = os.path.basename(term.policydata_new_report.name)
             db_name = create_name_database_with_date(filename=policydata_new_report_name, database_name=DATABASE_NAME)
+            if "_" in db_name:
+                prefix, date_part = db_name.split("_", 1)
+                new_db_name = f"fibas_{date_part}"
+            else:
+                new_db_name = "fibas"
+
+            print(new_db_name, 'new_db_name')
 
             db_name_previous_year = get_db_name_previous_year(filename=db_name, database_name=DATABASE_NAME)
             check_db_name_previous_year = sql.check_database(db_name=db_name_previous_year)
 
-            if check_db_name_previous_year:
-                if sql.check_table(db_name=db_name_previous_year, table_name='Monet Inputs Term'):
-                    if Parameters.objects.filter(term=term).exists():
-                        date_data_extract = datetime.strptime(str(term.parameters.date_data_extract.date()), '%Y-%m-%d').strftime('%d-%m-%Y')
-                        val_dat = datetime.strptime(str(term.parameters.val_dat.date()), '%Y-%m-%d').strftime('%d-%m-%Y')
-                        fib_reinsured = term.parameters.fib_reinsured
-                        val_dat_old = term.parameters.val_dat_old
-
-                        if val_dat_old:
-                            date = val_dat_old
-                        else:
-                            date = term.parameters.val_dat
-
-                        # Make a backup there is a table exists
-                        table_name = 'Monet Inputs Term NB'
-                        if sql.check_table(db_name=db_name, table_name=table_name):
-                            sql.backup_table(db_name=db_name, table_name=table_name, date=date)
-
-                        table_name = 'Monet Inputs ExpPL'
-                        if sql.check_table(db_name=db_name, table_name=table_name):
-                            sql.backup_table(db_name=db_name, table_name=table_name, date=date)
-
-                        db_name_previous_year = get_db_name_previous_year(filename=db_name, database_name=DATABASE_NAME)
-
-                        try:
-                            GenerateMonetInputsExpPL().run(db_name=db_name, date_data_extract=date_data_extract,
-                                                           val_dat=val_dat, fib_reinsured=fib_reinsured,
-                                                           monet_inputs_previous_year=db_name_previous_year)
-                        except Exception as e:
-                            response = str(e)
-                            logger.error(response)
-                            return HttpResponse(response)
-
-                        response = 'Done'
-                        return HttpResponse(response)
-                    response = 'Error'
-                    return HttpResponse(response)
-            else:
-                response = f'Table \'{db_name_previous_year}.Monet Inputs Term\' doesn\'t exist'
-                return HttpResponse(response)
-    raise Http404()
-
-
-@csrf_exempt
-def run_generate_monet_inputs_exp_death(request, pk):
-    if request.method == 'POST':
-        if Term.objects.filter(id=pk).exists():
-            sql = Connector()
-            term = Term.objects.get(id=pk)
-            policydata_new_report_name = os.path.basename(term.policydata_new_report.name)
-            db_name = create_name_database_with_date(filename=policydata_new_report_name, database_name=DATABASE_NAME)
 
             if Parameters.objects.filter(term=term).exists():
                 date_data_extract = datetime.strptime(str(term.parameters.date_data_extract.date()), '%Y-%m-%d').strftime('%d-%m-%Y')
@@ -320,14 +286,39 @@ def run_generate_monet_inputs_exp_death(request, pk):
                 else:
                     date = term.parameters.val_dat
 
-                # Make a backup there is a table exists
-                table_name = 'Monet Inputs ExpDeath'
-                if sql.check_table(db_name=db_name, table_name=table_name):
-                    sql.backup_table(db_name=db_name, table_name=table_name, date=date)
-
+                table_names = [
+                    'Monet Inputs ExpDeath',
+                    'Monet Inputs Term',
+                    'Monet Inputs FIBAS',
+                    'Monet Inputs Term NB',
+                    'Monet Inputs ExpPL',
+                    'Monet Inputs Previous year'
+                ]
+                for table_name in table_names:
+                    if sql.check_table(db_name=db_name, table_name=table_name):
+                        sql.backup_table(db_name=db_name, table_name=table_name, date=date)
                 try:
-                    GenerateMonetInputsExpDeath().run(db_name=db_name, date_data_extract=date_data_extract,
-                                                      val_dat=val_dat, fib_reinsured=fib_reinsured)
+
+                    GenerateMonetInputs().run(db_name=db_name, new_db_name=new_db_name, date_data_extract=date_data_extract,
+                                                  fib_reinsured=fib_reinsured, val_dat=val_dat)
+                    if check_db_name_previous_year:
+                        if sql.check_table(db_name=db_name_previous_year, table_name='Monet Inputs Term'):
+                                try:
+                                    print('PRINT #2')
+                                    GenerateMonetInputsExpPL().run(db_name=db_name, date_data_extract=date_data_extract,
+                                                                   val_dat=val_dat, fib_reinsured=fib_reinsured,
+                                                                   monet_inputs_previous_year=db_name_previous_year, new_db_name=new_db_name)
+                                    print('PRINT #3')
+                                except Exception as e:
+                                    response = str(e)
+                                    logger.error(response)
+                                    return HttpResponse(response)
+
+
+                    else:
+                        response = f'Table \'{db_name_previous_year}.Monet Inputs Term\' doesn\'t exist'
+                        return HttpResponse(response)
+
                 except Exception as e:
                     response = str(e)
                     logger.error(response)
@@ -339,45 +330,6 @@ def run_generate_monet_inputs_exp_death(request, pk):
             return HttpResponse(response)
     raise Http404()
 
-
-@csrf_exempt
-def run_generate_monet_inputs_term(request, pk):
-    if request.method == 'POST':
-        if Term.objects.filter(id=pk).exists():
-            sql = Connector()
-            term = Term.objects.get(id=pk)
-            policydata_new_report_name = os.path.basename(term.policydata_new_report.name)
-            db_name = create_name_database_with_date(filename=policydata_new_report_name, database_name=DATABASE_NAME)
-
-            if Parameters.objects.filter(term=term).exists():
-                date_data_extract = datetime.strptime(str(term.parameters.date_data_extract.date()),
-                                                      '%Y-%m-%d').strftime('%d-%m-%Y')
-                fib_reinsured = term.parameters.fib_reinsured
-                val_dat_old = term.parameters.val_dat_old
-
-                if val_dat_old:
-                    date = val_dat_old
-                else:
-                    date = term.parameters.val_dat
-
-                # Make a backup there is a table exists
-                table_name = 'Monet Inputs Term'
-                if sql.check_table(db_name=db_name, table_name=table_name):
-                    sql.backup_table(db_name=db_name, table_name=table_name, date=date)
-
-                try:
-                    GenerateMonetInputsTerm().run(db_name=db_name, date_data_extract=date_data_extract,
-                                                  fib_reinsured=fib_reinsured)
-                except Exception as e:
-                    response = str(e)
-                    logger.error(response)
-                    return HttpResponse(response)
-
-                response = 'Done'
-                return HttpResponse(response)
-            response = 'Error'
-            return HttpResponse(response)
-    raise Http404()
 
 
 @csrf_exempt
@@ -388,6 +340,13 @@ def run_db_check_data(request, pk):
             term = Term.objects.get(id=pk)
             policydata_new_report_name = os.path.basename(term.policydata_new_report.name)
             db_name = create_name_database_with_date(filename=policydata_new_report_name, database_name=DATABASE_NAME)
+            db_name_previous_year = get_db_name_previous_year(filename=db_name, database_name=DATABASE_NAME)
+            check_db_name_previous_year = sql.check_database(db_name=db_name_previous_year)
+            if "_" in db_name:
+                prefix, date_part = db_name.split("_", 1)
+                new_db_name = f"fibas_{date_part}"
+            else:
+                new_db_name = "fibas"
 
             if Parameters.objects.filter(term=term).exists():
                 val_dat_old = term.parameters.val_dat_old
@@ -403,7 +362,12 @@ def run_db_check_data(request, pk):
                     sql.backup_table(db_name=db_name, table_name=table_name, date=date)
 
                 try:
-                    DBCheckData().run(db_name=db_name)
+                    if check_db_name_previous_year:
+                        if sql.check_table(db_name=db_name_previous_year, table_name='Policydata_to_Quantum_ORIGINAL_PrevY'):
+                            DBCheckData().run(db_name=db_name,new_db_name=new_db_name )
+                    else:
+                        response = f'Table \'{db_name_previous_year}.Policydata_to_Quantum_ORIGINAL_PrevY\' doesn\'t exist'
+                        return HttpResponse(response)
                 except Exception as e:
                     response = str(e)
                     logger.error(response)
@@ -424,7 +388,11 @@ def run_check(request, pk):
             term = Term.objects.get(id=pk)
             policydata_new_report_name = os.path.basename(term.policydata_new_report.name)
             db_name = create_name_database_with_date(filename=policydata_new_report_name, database_name=DATABASE_NAME)
-
+            if "_" in db_name:
+                prefix, date_part = db_name.split("_", 1)
+                new_db_name = f"fibas_{date_part}"
+            else:
+                new_db_name = "fibas"
             if Parameters.objects.filter(term=term).exists():
                 val_dat_old = term.parameters.val_dat_old
 
@@ -439,7 +407,7 @@ def run_check(request, pk):
                     sql.backup_table(db_name=db_name, table_name=table_name, date=date)
 
                 try:
-                    RunCheck().run(db_name=db_name)
+                    RunCheck().run(db_name=db_name,new_db_name=new_db_name)
                 except Exception as e:
                     response = str(e)
                     logger.error(response)
