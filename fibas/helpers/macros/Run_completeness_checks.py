@@ -3,7 +3,7 @@ import logging
 from main.helpers.sql_connection.sql_connection import Connector
 
 logger = logging.getLogger(__name__)
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 
 # Run macros Run completeness checks
 class CompletenessChecks:

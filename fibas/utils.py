@@ -1,6 +1,6 @@
 from main.utils import validate_filename, get_path_name_input, validate_filename_sftp
 import os
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 
 def validate_filename_claims(value):
     correct_name = 'Reserveringen'

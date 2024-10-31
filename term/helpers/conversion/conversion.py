@@ -2,7 +2,7 @@ import logging
 import os
 
 from main.helpers.sql_connection.helpers import HelpersSQL
-from main.helpers.conversion.helpers import HelpersConversion
+from main.helpers.conversion.helpers import HelpersConversion, read_config
 from main.helpers.sql_connection.sql_connection import Connector
 from main.helpers.utils.get_file import Files
 import configparser
@@ -13,11 +13,6 @@ logger = logging.getLogger(__name__)
 # converters CSV files to MySQL, tables: "Policydata_NewReport", "DeHoopData", 'C_CalcEngine', 'C_CoverType',
 # 'C_Education', 'C_Flags', 'C_Freq', 'C_Occupation', 'C_Status'
 # creates SQL functions "PremWoOptions"
-
-def read_config(config_file='config.ini'):
-    config = configparser.ConfigParser()
-    config.read(config_file)
-    return config
 
 
 class Conversion:

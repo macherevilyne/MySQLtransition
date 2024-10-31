@@ -6,7 +6,7 @@ import shutil
 from copy import deepcopy
 from django.contrib.sessions.models import Session
 from django.contrib.sessions.backends.db import SessionStore
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 from django.conf import settings
 from django.utils import timezone
 import sqlparse
@@ -177,7 +177,10 @@ class FibasUpdateView(UpdateView, DataMixin):
     def form_valid(self, form):
         if form.is_valid():
             obj_name = Fibas.objects.get(id=self.object.pk)
+            print(obj_name, 'ojb name fibas')
             obj_date = re.findall(r'\d+', str(obj_name))
+            print(obj_date, 'ojb date fibas')
+
             check_names = check_files_name_update(form=form, check_date=obj_date[0])
             if check_names:
                 return self.render_to_response(self.get_context_data(form=form, check_names=check_names))
@@ -429,7 +432,11 @@ def convert_monet_results_all(request, pk):
             if sql.check_table(db_name=db_name, table_name=table_name):
                 sql.backup_table(db_name=db_name, table_name=table_name, date=date)
 
-            ConversionExcel().monet_results_all(db_name)
+            config = read_config()
+            base_path = config['client'].get('base_path')
+
+
+            ConversionExcel().monet_results_all(db_name, base_path)
             response = 'Done'
             return HttpResponse(response)
     raise Http404()

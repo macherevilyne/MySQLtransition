@@ -1,7 +1,7 @@
 import logging
 
 from main.helpers.sql_connection.sql_connection import Connector
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 logger = logging.getLogger(__name__)
 
 

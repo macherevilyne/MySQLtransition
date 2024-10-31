@@ -6,18 +6,24 @@
     <div>
         <div>
             <ul>
-                <li><a href="{% url 'new_product_add_files'  title=title  %}">Create new conversion</a></li>
+                <!-- Ссылка для создания нового продукта -->
+                <li><a href="{% url 'new_product_add_files' title=title %}">Create new conversion</a></li>
             </ul>
         </div>
         <div>
-            {% if fibases %}
+            <!-- Проверяем, есть ли отфильтрованные объекты -->
+            {% if products_objects %}
                 <ul>
-                {% for fibas in fibases %}
-                    <li><a href="{% url 'fibas_database' fibas.pk %}">{{ fibas }}</a></li>
-                {% endfor %}
+                    {% for product in products_objects %}
+                        <!-- Показать только те продукты, которые связаны с title -->
+                        <li><a href="{% url 'new_product_database' title=product.title pk=product.pk %}">{{ product.title }}</a></li>
+                    {% endfor %}
                 </ul>
+            {% else %}
+                <p>No products found for {{ title }}</p>
             {% endif %}
         </div>
+        <!-- Кнопка для возврата назад -->
         <button onClick="javascript:history.go(-1);"><i class="bi bi-arrow-left"></i>Back</button>
     </div>
 {% endblock %}

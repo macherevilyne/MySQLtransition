@@ -10,6 +10,9 @@ from django.urls import reverse
 from django.conf import settings
 from add_new_product.models import New_product
 
+import datetime
+from dateutil.relativedelta import relativedelta
+import re
 
 
 def get_menu():
@@ -55,6 +58,7 @@ def check_files_name(form):
     check_date = ''
     check_names = {}
 
+
     for form_name, filename in form.files.dict().items():
         try:
             year, month, day = re.findall(r'\d+', str(filename))
@@ -69,11 +73,17 @@ def check_files_name(form):
             check_date = f'{year[2:]}{month}'
         else:
             date = f'{year[2:]}{month}'
+            print(date, 'date')
             if check_date != date:
-                check_names[form_name] = f'File date error. Need a date {year}-{check_date[2:]}'
+                check_names[form_name] = f'File {filename} date error. Need a date {check_date}'
             else:
                 check_date = date
+    print(check_date, 'check_date')
+    print(check_names, 'check_names')
+
     return check_names
+
+
 
 
 def check_files_name_update(form, check_date):
@@ -90,6 +100,7 @@ def check_files_name_update(form, check_date):
         if check_date != f'{year[2:]}{month}':
             check_names[form_name] = f'File date error. Need a date 20{check_year[2:]}-{check_month}'
     return check_names
+
 
 
 # get date from names file, write date in format YYMM

@@ -1,9 +1,8 @@
 import logging
-
+import datetime
 from main.helpers.sql_connection.helpers import HelpersSQL
-from main.helpers.conversion.helpers import HelpersConversion
+from main.helpers.conversion.helpers import HelpersConversion, read_config
 from main.helpers.sql_connection.sql_connection import Connector
-import configparser
 
 
 logger = logging.getLogger(__name__)
@@ -12,10 +11,7 @@ logger = logging.getLogger(__name__)
 # converters CSV files to MySQL, tables: "ClaimsBasic", "Claims", "ClaimsPolicy", "Policies"
 # creates SQL functions "CheckList" and "ClaimsStatus"
 # creates additional table "SpecialPartialTable"
-def read_config(config_file='config.ini'):
-    config = configparser.ConfigParser()
-    config.read(config_file)
-    return config
+
 
 class Conversion:
 
@@ -81,17 +77,42 @@ class Conversion:
                                                 provider_name=self.provider_name, file_name=func_name, base_path=self.base_path)
         logger.info(f'Created function {func_name}')
 
-    def create_special_partal_table(self, db_name: str, new_db_name:str):
+    def create_special_partal_table(self, db_name: str, new_db_name: str):
         folder_name = 'q_requests'
         file_name = 'Generate SpecialPartialTable.sql'
 
-        logger.info(f'Creating SpecialPartialTable')
+        logger.info(f'Checking if SpecialPartialTable exists for backup')
         connection = self.sql.connection(db_name)
-        connection.execute('DROP TABLE IF EXISTS `SpecialPartialTable`;')
-        self.helpers_sql.execute_requests(connection=connection, provider_name=self.provider_name,
-                                          folder_name=folder_name, file_name=file_name,db_name=db_name,base_path=self.base_path, new_db_name=new_db_name)
-        logger.info(f'Created SpecialPartialTable')
 
+        # Проверяем, существует ли таблица 'SpecialPartialTable'
+        if self.sql.check_table(db_name=db_name, table_name='SpecialPartialTable'):
+            logger.info(f'SpecialPartialTable exists, creating backup')
+
+            current_datetime = datetime.datetime.now()
+            name_new_table = 'SpecialPartialTable'
+
+            # Создание бэкап-таблицы (копирование структуры и данных)
+            self.sql.backup_table(db_name=db_name, table_name=name_new_table,date=current_datetime)
+
+            logger.info(f'Backup created: {name_new_table}_{current_datetime}')
+        else:
+            logger.info(f'SpecialPartialTable does not exist, no backup needed')
+
+        # Удаляем старую таблицу, если она существует
+        connection.execute('DROP TABLE IF EXISTS `SpecialPartialTable`;')
+        logger.info(f'Dropped old SpecialPartialTable (if existed)')
+
+        # Создаем новую таблицу из SQL файла
+        self.helpers_sql.execute_requests(
+            connection=connection,
+            provider_name=self.provider_name,
+            folder_name=folder_name,
+            file_name=file_name,
+            db_name=db_name,
+            base_path=self.base_path,
+            new_db_name=new_db_name
+        )
+        logger.info(f'Created new SpecialPartialTable')
 
     def run(self, db_name: str, new_db_name:str):
         logger.info('Сonversion start')

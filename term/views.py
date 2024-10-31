@@ -24,7 +24,7 @@ from .helpers.macros.generate_monetinputs_exppl import GenerateMonetInputsExpPL
 from .helpers.macros.run_check import RunCheck
 from .models import Term, Parameters, UserSql, UserMacros, UserMacrosSql
 from .forms import AddFilesConversionForm, ParametersForm, UserSqlForm, ExecuteSqlForm, UserMacrosForm, ExecuteMacrosForm
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 from .helpers.conversion.conversion import Conversion
 
 logger = logging.getLogger(__name__)

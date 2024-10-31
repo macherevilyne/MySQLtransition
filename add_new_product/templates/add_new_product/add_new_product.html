@@ -4,7 +4,19 @@
     <h1>Add New Product</h1>
     <form id="product-form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>
+                        {{ message }}
+                    </li>
+                {% endfor %}
+            {% elif error_message %}
+                <li class="error">
+                    {{ error_message }}
+                </li>
+            </ul>
+        {% endif %}
         <div id="form-fields">
             {{ form.title.label_tag }} {{ form.title }}
 
@@ -12,7 +24,6 @@
             {{ form.files_count.label_tag }} {{ form.files_count }}
 
             <br><br>
-
             <label for="file_names">Type in filenames</label>
             <div id="file_names_container"></div>
             <br><br>
@@ -20,45 +31,67 @@
             <!-- Скрытое поле для передачи значений file_names -->
             <input type="hidden" name="file_names" id="file_names">
 
+
+            <br><br>
+            {{ form.tables_count.label_tag }} {{ form.tables_count }}
+
+            <br><br>
+            <label for="table_names">Type in table names</label>
+            <div id="table_names_container"></div>
+            <br><br>
+
+            <!-- Скрытое поле для передачи значений table_names -->
+            <input type="hidden" name="table_names" id="table_names">
+
             <button type="submit" id="submit-btn" class="disabled" disabled>Submit</button>
         </div>
     </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Обновить количество полей при изменении количества файлов
+            // Обновление количества полей при изменении количества файлов
             document.querySelector('[name="files_count"]').addEventListener('input', function() {
-                var filesCount = parseInt(this.value) || 0;
-                var fileNamesContainer = document.getElementById('file_names_container');
-                fileNamesContainer.innerHTML = '';
-
-                for (var i = 1; i <= filesCount; i++) {
-                    var input = document.createElement('input');
-                    input.type = 'text';
-                    input.name = 'file_names_' + i;
-                    input.placeholder = 'Filename ' + i;
-                    input.addEventListener('input', checkFields);  // Проверка полей при вводе
-                    fileNamesContainer.appendChild(input);
-                    fileNamesContainer.appendChild(document.createElement('br'));
-                }
-
-                // Проверить поля при изменении количества
+                updateDynamicFields(this.value, 'file_names_container', 'file_names_', 'Filename ');
                 checkFields();
             });
 
+            // Обновление количества полей при изменении количества таблиц
+            document.querySelector('[name="tables_count"]').addEventListener('input', function() {
+                updateDynamicFields(this.value, 'table_names_container', 'table_names_', 'Table name ');
+                checkFields();
+            });
+
+            // Функция для создания динамических полей
+            function updateDynamicFields(count, containerId, fieldPrefix, placeholderPrefix) {
+                var countValue = parseInt(count) || 0;
+                var container = document.getElementById(containerId);
+                container.innerHTML = '';
+
+                for (var i = 1; i <= countValue; i++) {
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = fieldPrefix + i;
+                    input.placeholder = placeholderPrefix + i;
+                    input.addEventListener('input', checkFields);  // Проверка полей при вводе
+                    container.appendChild(input);
+                    container.appendChild(document.createElement('br'));
+                }
+            }
+
+            // Функция проверки всех динамических полей и активации кнопки Submit
             function checkFields() {
                 var submitBtn = document.getElementById('submit-btn');
-                var inputs = document.querySelectorAll('#file_names_container input[name^="file_names_"]');
-                var allFilled = true;
 
-                inputs.forEach(function(input) {
-                    if (input.value.trim() === '') {
-                        allFilled = false;
-                    }
-                });
+                // Проверка полей для файлов
+                var fileInputs = document.querySelectorAll('#file_names_container input[name^="file_names_"]');
+                var filesAllFilled = checkIfAllFieldsFilled(fileInputs);
 
-                // Активировать кнопку "Submit", если все поля заполнены
-                if (allFilled && inputs.length > 0) {
+                // Проверка полей для таблиц
+                var tableInputs = document.querySelectorAll('#table_names_container input[name^="table_names_"]');
+                var tablesAllFilled = checkIfAllFieldsFilled(tableInputs);
+
+                // Активировать кнопку, если все поля заполнены
+                if (filesAllFilled && tablesAllFilled && fileInputs.length > 0 && tableInputs.length > 0) {
                     submitBtn.classList.remove('disabled');
                     submitBtn.disabled = false;
                 } else {
@@ -67,26 +100,49 @@
                 }
             }
 
-            // Проверка полей и заполнение скрытого поля при отправке формы
-            document.getElementById('product-form').addEventListener('submit', function(event) {
-                var inputs = document.querySelectorAll('#file_names_container input[name^="file_names_"]');
+            // Проверка, заполнены ли все поля
+            function checkIfAllFieldsFilled(inputs) {
                 var allFilled = true;
-                var fileNames = [];
-
                 inputs.forEach(function(input) {
                     if (input.value.trim() === '') {
                         allFilled = false;
-                    } else {
+                    }
+                });
+                return allFilled;
+            }
+
+            // Проверка полей и заполнение скрытых полей при отправке формы
+            document.getElementById('product-form').addEventListener('submit', function(event) {
+                var fileInputs = document.querySelectorAll('#file_names_container input[name^="file_names_"]');
+                var tableInputs = document.querySelectorAll('#table_names_container input[name^="table_names_"]');
+
+                var allFilesFilled = checkIfAllFieldsFilled(fileInputs);
+                var allTablesFilled = checkIfAllFieldsFilled(tableInputs);
+
+                var fileNames = [];
+                var tableNames = [];
+
+                // Получение значений полей для файлов
+                fileInputs.forEach(function(input) {
+                    if (input.value.trim() !== '') {
                         fileNames.push(input.value);
                     }
                 });
 
-                if (!allFilled) {
-                    alert('Please fill in all filename fields.');
+                // Получение значений полей для таблиц
+                tableInputs.forEach(function(input) {
+                    if (input.value.trim() !== '') {
+                        tableNames.push(input.value);
+                    }
+                });
+
+                if (!allFilesFilled || !allTablesFilled) {
+                    alert('Please fill in all filename and table name fields.');
                     event.preventDefault();  // Отменить отправку формы
                 } else {
-                    // Заполнить скрытое поле значениями из динамических полей
+                    // Заполнение скрытых полей значениями из динамических полей
                     document.getElementById('file_names').value = fileNames.join(',');
+                    document.getElementById('table_names').value = tableNames.join(',');
                 }
             });
         });

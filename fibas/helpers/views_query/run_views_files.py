@@ -11,7 +11,7 @@ FOLDER_NAME = 'q_requests'
 files = Files()
 connector = Connector()
 helpers_sql = HelpersSQL()
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 
 
 

@@ -54,6 +54,7 @@ class Connector:
         connection = self.connection(db_name)
         sql = f'SHOW TABLES LIKE "{table_name}";'
         result = connection.execute(sql)
+        print(result, 'RESULT1')
         for _ in result:
             return True
         return False

@@ -1,5 +1,5 @@
 from main.utils import validate_filename, create_name_database_with_date, get_path_name_input
-from fibas.helpers.conversion.conversion import read_config
+from main.helpers.conversion.helpers import read_config
 
 def validate_filename_policydata_new_report(value):
     correct_name = 'Policydata'

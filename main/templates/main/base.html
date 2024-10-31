@@ -15,6 +15,8 @@
     <script src="{% static 'main/js/fibas_script.js' %}"></script>
     <script src="{% static 'main/js/term_script.js' %}"></script>
     <script src="{% static 'main/js/lifeware_script.js' %}"></script>
+    <script src="{% static 'main/js/new_product.js' %}"></script>
+
 </head>
 <body>
     <div id="upper-block">
@@ -31,14 +33,19 @@
                     {% with url=m.url_name %}
 
             <li>
+
                 <a class="{% if url == request.path %}active-point{% endif %} menu-point" href="{{ url }}">
                     <i class="{% if url == request.path %}bi bi-arrow-right{% endif %}"></i>
                     {{ m.title }}
 
                 </a>
+
             </li>
         {% endwith %}
     {% endfor %}
+                        <a href="{% url 'add_new_product' %}">
+        <button type="button">Add New Product</button>
+    </a>
 </ul>
 
             </div>
